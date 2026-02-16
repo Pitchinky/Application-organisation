@@ -38,17 +38,20 @@ function App() {
   };
 
   const loadEvents = () => {
-    gapi.client.calendar.events.list({
-      'calendarId': 'primary',
-      'timeMin': (new Date()).toISOString(),
-      'showDeleted': false,
-      'singleEvents': true,
-      'maxResults': 10,
-      'orderBy': 'startTime'
-    }).then(response => {
-      setEvents(response.result.items);
-    });
-  };
+  gapi.client.calendar.events.list({
+    'calendarId': 'primary',
+    'timeMin': (new Date()).toISOString(),
+    'showDeleted': false,
+    'singleEvents': true,
+    'maxResults': 10,
+    'orderBy': 'startTime'
+  }).then(response => {
+    console.log("RÉPONSE GOOGLE :", response); // <--- AJOUTE ÇA
+    setEvents(response.result.items);
+  }).catch(err => {
+    console.error("ERREUR RÉCUPÉRATION :", err); // <--- AJOUTE ÇA
+  });
+};
 
   // Charger les événements automatiquement si déjà connecté
   useEffect(() => {
