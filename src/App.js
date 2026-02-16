@@ -37,7 +37,7 @@ function App() {
     }
   };
 
-  const loadEvents = () => {
+const loadEvents = () => {
   gapi.client.calendar.events.list({
     'calendarId': 'primary',
     'timeMin': (new Date()).toISOString(),
@@ -46,10 +46,12 @@ function App() {
     'maxResults': 10,
     'orderBy': 'startTime'
   }).then(response => {
-    console.log("RÉPONSE GOOGLE :", response); // <--- AJOUTE ÇA
+    console.log("Succès ! Événements trouvés :", response.result.items);
     setEvents(response.result.items);
-  }).catch(err => {
-    console.error("ERREUR RÉCUPÉRATION :", err); // <--- AJOUTE ÇA
+  }).catch(error => {
+    // ICI ON VA VOIR LE VRAI PROBLÈME
+    console.error("Détail de l'erreur Google :", error.result.error.message);
+    alert("Erreur Google : " + error.result.error.message); 
   });
 };
 
