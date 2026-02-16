@@ -26,16 +26,20 @@ function App() {
     gapi.load('client:auth2', start);
   }, []);
 
-  const handleAuth = () => {
-    if (isSignedIn) {
-      gapi.auth2.getAuthInstance().signOut().then(() => setIsSignedIn(false));
-    } else {
-      gapi.auth2.getAuthInstance().signIn({ux_mode: 'popup'}).then(() => {
-        setIsSignedIn(true);
-        loadEvents();
-      });
-    }
-  };
+const handleAuth = () => {
+  const authInstance = gapi.auth2.getAuthInstance();
+  // On force la demande de consentement à chaque fois pour être sûr
+  authInstance.signIn({
+    prompt: 'consent',
+    ux_mode: 'popup'
+  }).then(() => {
+    console.log("Connecté avec succès !");
+    setIsSignedIn(true);
+    loadEvents();
+  }).catch(err => {
+    alert("Erreur Google : " + JSON.stringify(err));
+  });
+};
 
 const loadEvents = () => {
   gapi.client.calendar.events.list({
