@@ -10,10 +10,13 @@ const DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/
 
 function App() {
   const [events, setEvents] = useState([]);
+  const [calendars, setCalendars] = useState([]); // Liste des calendriers
+  const [selectedCalendarId, setSelectedCalendarId] = useState('primary'); // Calendrier sélectionné
+  const [calendarColor, setCalendarColor] = useState('#007AFF'); // Couleur du calendrier
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [tokenClient, setTokenClient] = useState(null);
 
-  // 1. Initialiser le client GAPI (pour lire les données)
+  // 1. Initialiser GAPI
   useEffect(() => {
     gapi.load("client", async () => {
       await gapi.client.init({
@@ -23,9 +26,8 @@ function App() {
     });
   }, []);
 
-  // 2. Initialiser le client GIS (pour se connecter - Nouvelle Méthode)
+  // 2. Initialiser GIS (Google Identity Services)
   useEffect(() => {
-    /* Le script google est chargé dans index.html */
     try {
       const client = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
@@ -33,7 +35,8 @@ function App() {
         callback: (tokenResponse) => {
           if (tokenResponse && tokenResponse.access_token) {
             setIsSignedIn(true);
-            listUpcomingEvents();
+            loadCalendars(); // On charge la liste des calendriers dès la connexion
+            listUpcomingEvents('primary'); // On charge les événements du principal par défaut
           }
         },
       });
@@ -45,10 +48,7 @@ function App() {
 
   const handleLogin = () => {
     if (tokenClient) {
-      // Ouvre la popup Google moderne
       tokenClient.requestAccessToken();
-    } else {
-      alert("Le service Google n'est pas encore prêt. Attendez 2 secondes.");
     }
   };
 
@@ -59,14 +59,26 @@ function App() {
         gapi.client.setToken('');
         setIsSignedIn(false);
         setEvents([]);
+        setCalendars([]);
       });
     }
   };
 
-  const listUpcomingEvents = async () => {
+  // Charge la liste de tous les calendriers disponibles
+  const loadCalendars = async () => {
+    try {
+      const response = await gapi.client.calendar.calendarList.list();
+      setCalendars(response.result.items);
+    } catch (err) {
+      console.error("Erreur chargement liste calendriers:", err);
+    }
+  };
+
+  // Charge les événements d'un calendrier spécifique
+  const listUpcomingEvents = async (calendarId) => {
     try {
       const response = await gapi.client.calendar.events.list({
-        'calendarId': 'primary',
+        'calendarId': calendarId,
         'timeMin': (new Date()).toISOString(),
         'showDeleted': false,
         'singleEvents': true,
@@ -74,13 +86,29 @@ function App() {
         'orderBy': 'startTime',
       });
       setEvents(response.result.items);
+      
+      // Trouver la couleur du calendrier pour l'affichage
+      const currentCal = calendars.find(c => c.id === calendarId);
+      if (currentCal && currentCal.backgroundColor) {
+        setCalendarColor(currentCal.backgroundColor);
+      }
     } catch (err) {
       console.error("Erreur chargement événements:", err);
-      if (err.status === 401 || err.status === 403) {
-        setIsSignedIn(false);
-        alert("Session expirée, veuillez vous reconnecter.");
-      }
     }
+  };
+
+  // Quand l'utilisateur change de calendrier dans le menu
+  const handleCalendarChange = (e) => {
+    const newCalendarId = e.target.value;
+    setSelectedCalendarId(newCalendarId);
+    
+    // Mettre à jour la couleur
+    const selectedCal = calendars.find(cal => cal.id === newCalendarId);
+    if (selectedCal) {
+      setCalendarColor(selectedCal.backgroundColor || '#007AFF');
+    }
+
+    listUpcomingEvents(newCalendarId);
   };
 
   return (
@@ -88,6 +116,26 @@ function App() {
       <header>
         <div className="date-pill">Aujourd'hui</div>
         <h1>Mon Planning</h1>
+        
+        {/* Menu de sélection des calendriers (n'apparaît que si connecté) */}
+        {isSignedIn && calendars.length > 0 && (
+          <select 
+            className="calendar-select" 
+            value={selectedCalendarId} 
+            onChange={handleCalendarChange}
+            style={{ marginBottom: '15px', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', width: '100%' }}
+          >
+            <option value="primary">Mon Agenda Principal</option>
+            {calendars
+              .filter(cal => cal.id !== 'primary') // On évite les doublons si 'primary' est déjà là
+              .map((cal) => (
+              <option key={cal.id} value={cal.id}>
+                {cal.summaryOverride || cal.summary}
+              </option>
+            ))}
+          </select>
+        )}
+
         {!isSignedIn ? (
           <button onClick={handleLogin} className="sync-btn">Connexion Google</button>
         ) : (
@@ -104,7 +152,8 @@ function App() {
                 : "Journée"}
             </div>
             <div className="dot-container">
-               <div className="dot"></div>
+               {/* Le point prend la couleur du calendrier */}
+               <div className="dot" style={{backgroundColor: calendarColor}}></div>
                {index !== events.length - 1 && <div className="line"></div>}
             </div>
             <div className="event-card">
@@ -113,7 +162,7 @@ function App() {
           </div>
         )) : (
           <p className="empty">
-            {isSignedIn ? "Aucun événement prévu." : "Connectez-vous pour voir votre agenda."}
+            {isSignedIn ? "Aucun événement prévu sur cet agenda." : "Connectez-vous pour voir votre agenda."}
           </p>
         )}
       </div>
