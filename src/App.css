@@ -78,7 +78,7 @@ body {
   overflow-y: auto; /* Le scroll se passe ICI */
   
   /* CRUCIAL : On pousse le contenu vers le bas pour qu'il sorte de sous le header fixe */
-  padding-top: 250px; 
+  padding-top: 200px; 
   padding-bottom: calc(var(--nav-height) + 50px);
   
   height: 100dvh; /* Prend toute la hauteur */
