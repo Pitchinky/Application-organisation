@@ -1,5 +1,5 @@
 /* global google */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { gapi } from 'gapi-script';
 import './App.css';
 
@@ -10,23 +10,34 @@ const DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/
 
 function App() {
   const [events, setEvents] = useState([]);
-  const [calendars, setCalendars] = useState([]); // Liste des calendriers
-  const [selectedCalendarId, setSelectedCalendarId] = useState('primary'); // Calendrier sélectionné
-  const [calendarColor, setCalendarColor] = useState('#007AFF'); // Couleur du calendrier
+  const [calendars, setCalendars] = useState([]);
+  const [selectedCalendarId, setSelectedCalendarId] = useState('primary');
+  const [calendarColor, setCalendarColor] = useState('#007AFF');
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [tokenClient, setTokenClient] = useState(null);
+  const [currentTimePosition, setCurrentTimePosition] = useState(null);
 
-  // 1. Initialiser GAPI
+  // Initialisation GAPI (Lecture)
   useEffect(() => {
     gapi.load("client", async () => {
       await gapi.client.init({
         apiKey: API_KEY,
         discoveryDocs: [DISCOVERY_DOC],
       });
+      // Tentative de restauration de session
+      const savedToken = localStorage.getItem('google_access_token');
+      const savedExpiration = localStorage.getItem('google_token_expires');
+      
+      if (savedToken && savedExpiration && Date.now() < parseInt(savedExpiration)) {
+        gapi.client.setToken({ access_token: savedToken });
+        setIsSignedIn(true);
+        loadCalendars();
+        listUpcomingEvents('primary');
+      }
     });
   }, []);
 
-  // 2. Initialiser GIS (Google Identity Services)
+  // Initialisation GIS (Connexion)
   useEffect(() => {
     try {
       const client = google.accounts.oauth2.initTokenClient({
@@ -34,9 +45,14 @@ function App() {
         scope: SCOPES,
         callback: (tokenResponse) => {
           if (tokenResponse && tokenResponse.access_token) {
+            // Sauvegarde du token pour 50 minutes (marge de sécurité)
+            const expiresIn = (tokenResponse.expires_in || 3599) * 1000;
+            localStorage.setItem('google_access_token', tokenResponse.access_token);
+            localStorage.setItem('google_token_expires', Date.now() + expiresIn);
+            
             setIsSignedIn(true);
-            loadCalendars(); // On charge la liste des calendriers dès la connexion
-            listUpcomingEvents('primary'); // On charge les événements du principal par défaut
+            loadCalendars();
+            listUpcomingEvents('primary');
           }
         },
       });
@@ -46,10 +62,18 @@ function App() {
     }
   }, []);
 
+  // Calcul de la position de la ligne "Maintenant"
+  useEffect(() => {
+    const interval = setInterval(() => {
+        // On recalcule la position (logique simplifiée pour l'exemple visuel)
+        // Dans une vraie app Structured, c'est calculé par rapport à la hauteur des pixels
+        setCurrentTimePosition(new Date()); 
+    }, 60000); // Mise à jour chaque minute
+    return () => clearInterval(interval);
+  }, []);
+
   const handleLogin = () => {
-    if (tokenClient) {
-      tokenClient.requestAccessToken();
-    }
+    if (tokenClient) tokenClient.requestAccessToken();
   };
 
   const handleLogout = () => {
@@ -57,6 +81,8 @@ function App() {
     if (token !== null) {
       google.accounts.oauth2.revoke(token.access_token, () => {
         gapi.client.setToken('');
+        localStorage.removeItem('google_access_token');
+        localStorage.removeItem('google_token_expires');
         setIsSignedIn(false);
         setEvents([]);
         setCalendars([]);
@@ -64,108 +90,135 @@ function App() {
     }
   };
 
-  // Charge la liste de tous les calendriers disponibles
   const loadCalendars = async () => {
     try {
       const response = await gapi.client.calendar.calendarList.list();
       setCalendars(response.result.items);
-    } catch (err) {
-      console.error("Erreur chargement liste calendriers:", err);
-    }
+    } catch (err) { console.error(err); }
   };
 
-  // Charge les événements d'un calendrier spécifique
   const listUpcomingEvents = async (calendarId) => {
     try {
+      // On récupère les événements de minuit ce matin à minuit ce soir
+      const startOfDay = new Date();
+      startOfDay.setHours(0,0,0,0);
+      const endOfDay = new Date();
+      endOfDay.setHours(23,59,59,999);
+
       const response = await gapi.client.calendar.events.list({
         'calendarId': calendarId,
-        'timeMin': (new Date()).toISOString(),
+        'timeMin': startOfDay.toISOString(),
+        'timeMax': endOfDay.toISOString(),
         'showDeleted': false,
         'singleEvents': true,
-        'maxResults': 15,
+        'maxResults': 50,
         'orderBy': 'startTime',
       });
       setEvents(response.result.items);
       
-      // Trouver la couleur du calendrier pour l'affichage
       const currentCal = calendars.find(c => c.id === calendarId);
       if (currentCal && currentCal.backgroundColor) {
         setCalendarColor(currentCal.backgroundColor);
       }
     } catch (err) {
-      console.error("Erreur chargement événements:", err);
+      console.error("Erreur événements", err);
+      if (err.status === 401) {
+        // Token expiré, on nettoie
+        handleLogout();
+      }
     }
   };
 
-  // Quand l'utilisateur change de calendrier dans le menu
   const handleCalendarChange = (e) => {
-    const newCalendarId = e.target.value;
-    setSelectedCalendarId(newCalendarId);
-    
-    // Mettre à jour la couleur
-    const selectedCal = calendars.find(cal => cal.id === newCalendarId);
-    if (selectedCal) {
-      setCalendarColor(selectedCal.backgroundColor || '#007AFF');
-    }
+    const newId = e.target.value;
+    setSelectedCalendarId(newId);
+    listUpcomingEvents(newId);
+  };
 
-    listUpcomingEvents(newCalendarId);
+  // Fonction utilitaire pour formater l'heure
+  const formatTime = (isoString) => {
+    if (!isoString) return "";
+    return new Date(isoString).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'});
+  };
+
+  // Vérifier si un événement est "en cours"
+  const isCurrentEvent = (start, end) => {
+    const now = new Date();
+    return now >= new Date(start) && now <= new Date(end);
   };
 
   return (
     <div className="structured-app">
-      <header>
-        <div className="date-pill">Aujourd'hui</div>
+      <header className="app-header">
+        <div className="header-top">
+            <span className="greeting">Bonjour,</span>
+            {isSignedIn && (
+                <div className="avatar-placeholder" onClick={handleLogout}>D</div>
+            )}
+        </div>
         <h1>Mon Planning</h1>
         
-        {/* Menu de sélection des calendriers (n'apparaît que si connecté) */}
-        {isSignedIn && calendars.length > 0 && (
-          <select 
-            className="calendar-select" 
-            value={selectedCalendarId} 
-            onChange={handleCalendarChange}
-            style={{ marginBottom: '15px', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', width: '100%' }}
-          >
-            <option value="primary">Mon Agenda Principal</option>
-            {calendars
-              .filter(cal => cal.id !== 'primary') // On évite les doublons si 'primary' est déjà là
-              .map((cal) => (
-              <option key={cal.id} value={cal.id}>
-                {cal.summaryOverride || cal.summary}
-              </option>
-            ))}
-          </select>
-        )}
-
         {!isSignedIn ? (
-          <button onClick={handleLogin} className="sync-btn">Connexion Google</button>
+          <div className="login-container">
+            <p>Connecte-toi pour voir ta journée</p>
+            <button onClick={handleLogin} className="sync-btn">Connexion Google</button>
+          </div>
         ) : (
-          <button onClick={handleLogout} className="sync-btn" style={{backgroundColor: '#FF3B30'}}>Déconnexion</button>
+          <div className="calendar-selector-container">
+            <select 
+                className="calendar-select" 
+                value={selectedCalendarId} 
+                onChange={handleCalendarChange}
+                style={{color: calendarColor, borderColor: calendarColor}}
+            >
+                <option value="primary">Mon Agenda</option>
+                {calendars.filter(c => c.id !== 'primary').map(c => (
+                    <option key={c.id} value={c.id}>{c.summary}</option>
+                ))}
+            </select>
+          </div>
         )}
       </header>
 
-      <div className="timeline-container">
-        {events.length > 0 ? events.map((event, index) => (
-          <div key={event.id || index} className="timeline-item">
-            <div className="time-label">
-              {event.start.dateTime 
-                ? new Date(event.start.dateTime).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})
-                : "Journée"}
+      {isSignedIn && (
+        <div className="timeline-container">
+            {/* Indicateur ligne rouge (visuel simple positionné en haut pour l'exemple) */}
+            <div className="current-time-indicator">
+                <div className="red-dot"></div>
+                <div className="red-line"></div>
+                <span className="time-now">MAINTENANT</span>
             </div>
-            <div className="dot-container">
-               {/* Le point prend la couleur du calendrier */}
-               <div className="dot" style={{backgroundColor: calendarColor}}></div>
-               {index !== events.length - 1 && <div className="line"></div>}
-            </div>
-            <div className="event-card">
-              <b>{event.summary}</b>
-            </div>
-          </div>
-        )) : (
-          <p className="empty">
-            {isSignedIn ? "Aucun événement prévu sur cet agenda." : "Connectez-vous pour voir votre agenda."}
-          </p>
-        )}
-      </div>
+
+            {events.length > 0 ? events.map((event, index) => {
+                const isActive = event.start.dateTime && isCurrentEvent(event.start.dateTime, event.end.dateTime);
+                
+                return (
+                <div key={event.id || index} className={`timeline-item ${isActive ? 'active-event' : ''}`}>
+                    <div className="time-column">
+                        <span className="start-time">{formatTime(event.start.dateTime)}</span>
+                        <span className="end-time">{formatTime(event.end.dateTime)}</span>
+                    </div>
+                    
+                    <div className="visual-timeline">
+                        <div className="timeline-line"></div>
+                        <div className="event-dot" style={{backgroundColor: calendarColor, boxShadow: isActive ? `0 0 10px ${calendarColor}` : 'none'}}>
+                             {/* On pourrait mettre une icône ici plus tard */}
+                        </div>
+                    </div>
+
+                    <div className="event-card" style={{borderLeft: `4px solid ${calendarColor}`}}>
+                        <h3>{event.summary}</h3>
+                        {event.location && <p className="location">📍 {event.location}</p>}
+                    </div>
+                </div>
+                );
+            }) : (
+                <div className="empty-state">
+                    <p>Aucun événement pour le reste de la journée 🎉</p>
+                </div>
+            )}
+        </div>
+      )}
     </div>
   );
 }

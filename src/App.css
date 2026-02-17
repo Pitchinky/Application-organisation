@@ -1,38 +1,221 @@
-.App {
-  text-align: center;
+/* Import de la police Inter (ressemble à Apple San Francisco) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-color: #F2F2F7; /* Gris Apple */
+  --card-bg: #FFFFFF;
+  --text-primary: #1C1C1E;
+  --text-secondary: #8E8E93;
+  --accent-color: #007AFF;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
+.structured-app {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
   min-height: 100vh;
+}
+
+/* HEADER */
+.app-header {
+  margin-bottom: 30px;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.greeting {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+h1 {
+  font-size: 34px;
+  font-weight: 700;
+  margin: 5px 0 20px 0;
+  color: var(--text-primary);
+}
+
+.avatar-placeholder {
+  width: 32px;
+  height: 32px;
+  background: #E5E5EA;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* BOUTONS ET INPUTS */
+.sync-btn {
+  background-color: var(--text-primary);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s;
+  width: 100%;
+}
+
+.sync-btn:active {
+  transform: scale(0.98);
+}
+
+.calendar-select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background-color: white;
+  font-size: 16px;
+  font-weight: 600;
+  appearance: none; /* Enlève le style par défaut */
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007AFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 15px top 50%;
+  background-size: 12px auto;
+}
+
+/* TIMELINE PRINCIPALE */
+.timeline-container {
+  position: relative;
+  padding-top: 10px;
+}
+
+.timeline-item {
+  display: flex;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+/* Colonne Heure */
+.time-column {
+  width: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding-right: 15px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.end-time {
+  font-size: 11px;
+  opacity: 0.6;
+  margin-top: 4px;
+}
+
+/* Ligne visuelle */
+.visual-timeline {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  margin-right: 15px;
+  position: relative;
 }
 
-.App-link {
-  color: #61dafb;
+.event-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  z-index: 2;
+  border: 3px solid var(--bg-color); /* Effet de découpe */
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.timeline-line {
+  position: absolute;
+  top: 14px;
+  bottom: -24px; /* Étend la ligne jusqu'au prochain item */
+  width: 2px;
+  background-color: #E5E5EA;
+  z-index: 1;
+}
+
+.timeline-item:last-child .timeline-line {
+  display: none;
+}
+
+/* Cartes événements */
+.event-card {
+  flex: 1;
+  background: var(--card-bg);
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  transition: transform 0.2s;
+  /* border-left géré en JS pour la couleur dynamique */
+}
+
+.timeline-item.active-event .event-card {
+  transform: scale(1.02);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.event-card h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.location {
+  margin: 5px 0 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Indicateur MAINTENANT */
+.current-time-indicator {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  margin-left: 55px; /* Aligné avec la ligne */
+}
+
+.red-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #FF3B30;
+  border-radius: 50%;
+  margin-left: -4px; /* Centrer sur la ligne hypothétique */
+}
+
+.red-line {
+  height: 1px;
+  flex: 1;
+  background-color: #FF3B30;
+  margin: 0 10px;
+}
+
+.time-now {
+  font-size: 10px;
+  color: #FF3B30;
+  font-weight: 700;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
 }
