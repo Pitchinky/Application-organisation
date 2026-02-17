@@ -4,7 +4,8 @@ import { gapi } from 'gapi-script';
 import { 
   Settings, ChevronLeft, ChevronRight, Check, Circle, 
   Menu, Plus, Clock, Filter, X, 
-  Cloud, Sun, CloudRain, Snowflake, CloudLightning, Wind, Umbrella, Calendar as CalIcon 
+  Cloud, Sun, CloudRain, Snowflake, CloudLightning, Wind, Umbrella, 
+  Layout, Calendar as CalIcon, Inbox 
 } from 'lucide-react';
 import { format, addDays, subDays, isSameDay, startOfWeek, parseISO, differenceInMinutes } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -17,6 +18,7 @@ const SCOPES = "https://www.googleapis.com/auth/calendar.events";
 const DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest";
 
 function App() {
+  // --- ÉTATS ---
   const [events, setEvents] = useState([]);
   const [calendars, setCalendars] = useState([]);
   const [selectedCalendarIds, setSelectedCalendarIds] = useState(['primary']);
@@ -34,11 +36,9 @@ function App() {
   const [newTaskTime, setNewTaskTime] = useState("12:00");
   const [newTaskDuration, setNewTaskDuration] = useState(60);
   const [tokenClient, setTokenClient] = useState(null);
-  
-  // Référence pour scroller automatiquement vers l'heure actuelle
   const nowRef = useRef(null);
 
-  // --- INITIALISATION ---
+  // --- INIT ---
   useEffect(() => {
     gapi.load("client", async () => {
       await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
@@ -92,13 +92,6 @@ function App() {
   }, []);
 
   useEffect(() => { if (isSignedIn) fetchAllEvents(); }, [currentDate, selectedCalendarIds, isSignedIn]);
-
-  // Scroll automatique vers l'événement en cours au chargement
-  useEffect(() => {
-    if (!isLoading && events.length > 0 && nowRef.current) {
-      nowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [events, isLoading]);
 
   const loadData = async () => await loadCalendars();
   const loadCalendars = async () => { try { const r = await gapi.client.calendar.calendarList.list(); setCalendars(r.result.items); } catch(e){} };
@@ -159,15 +152,27 @@ function App() {
   const todaySummary = getDailySummary(new Date());
 
   return (
-    <div className="structured-layout">
-      {/* Container Principal : Centre l'app sur Desktop, Plein écran sur Mobile */}
+    <div className="layout-wrapper">
+      
+      {/* SIDEBAR (Visible uniquement sur Desktop) */}
+      <nav className="desktop-sidebar">
+        <div className="sidebar-logo">S</div>
+        <div className="sidebar-menu">
+          <button className="sidebar-btn active"><Layout size={20} /> Timeline</button>
+          <button className="sidebar-btn"><Inbox size={20} /> Inbox</button>
+          <button className="sidebar-btn"><CalIcon size={20} /> Calendrier</button>
+        </div>
+        <div className="sidebar-bottom">
+          <button className="sidebar-btn"><Settings size={20} /></button>
+        </div>
+      </nav>
+
       <div className="app-container">
         
-        {/* HEADER FIXE */}
+        {/* HEADER */}
         <header className="app-header">
           <div className="header-top">
             <div className="date-block">
-               {/* Titre mois cliquable pour revenir à aujourd'hui */}
                <h1 onClick={() => setCurrentDate(new Date())}>{format(currentDate, 'MMMM yyyy', { locale: fr })}</h1>
                {todaySummary && (
                  <div className="weather-pill">
@@ -182,12 +187,11 @@ function App() {
                  <button className="icon-btn" onClick={()=>setShowCalMenu(!showCalMenu)}><Filter size={18}/></button>
                  {showCalMenu && <div className="dropdown-menu">{calendars.map(c=>(<div key={c.id} className="dropdown-item" onClick={()=>toggleCalendar(c.id)}><div className="dot-check" style={{background:c.backgroundColor}}>{selectedCalendarIds.includes(c.id)&&<Check size={12} color="white"/>}</div><span>{c.summaryOverride||c.summary}</span></div>))}</div>}
               </div>
-              <button className="icon-btn"><Settings size={18} /></button>
+              <button className="desktop-add-btn" onClick={()=>setShowAddModal(true)}><Plus size={16} /> Ajouter</button>
               {!isSignedIn && <button onClick={handleLogin} className="login-btn-small">Login</button>}
             </div>
           </div>
 
-          {/* Navigation Jours (Scrollable) */}
           <div className="days-strip-scroll">
             <div className="days-strip">
               {weekDays.map((day, i) => {
@@ -213,25 +217,20 @@ function App() {
           </div>
         </header>
 
-        {/* TIMELINE (SCROLLABLE AREA) */}
+        {/* TIMELINE */}
         <main className="timeline-area" onClick={()=>setShowCalMenu(false)}>
            {isSignedIn ? (
              <div className="timeline-content">
                {isLoading && <div className="loader"><div className="spinner"></div></div>}
                
-               {/* Ligne "MAINTENANT" (si on est aujourd'hui) */}
                {isSameDay(currentDate, new Date()) && !isLoading && (
-                 <div className="now-indicator-line" style={{ top: '100px' /* Dynamique dans une version avancée */ }}>
-                    {/* Pour l'instant visuel, positionnerait en CSS avancé */}
-                 </div>
+                 <div className="now-indicator-line" style={{display: 'none'}}></div> 
                )}
 
                {!isLoading && events.length > 0 ? events.map((e, i) => {
                  const isAllDay=!e.start.dateTime; const start=isAllDay?null:parseISO(e.start.dateTime); const end=isAllDay?null:parseISO(e.end.dateTime);
                  const color=e.color||'#34C759'; const checked=completedEvents[e.id];
                  const {status,progress}=isAllDay?{status:'future',progress:0}:getEventStatus(e); const isCur=status==='current';
-                 
-                 // Ref pour le scroll auto
                  const itemRef = isCur ? nowRef : null;
 
                  return (
@@ -264,7 +263,7 @@ function App() {
                       </div>
                    </div>
                  );
-               }) : (!isLoading && <div className="empty-state"><p>Aucun plan pour aujourd'hui ✨</p></div>)}
+               }) : (!isLoading && <div className="empty-state"><p>Rien de prévu ✨</p></div>)}
                
                <div className="spacer-bottom"></div>
              </div>
@@ -277,18 +276,18 @@ function App() {
            )}
         </main>
 
-        {/* BOUTON FLOTTANT (FAB) */}
+        {/* FAB (Mobile Only) */}
         {isSignedIn && (
-          <button className="fab" onClick={()=>setShowAddModal(true)}>
+          <button className="fab mobile-only" onClick={()=>setShowAddModal(true)}>
             <Plus size={32} color="white" />
           </button>
         )}
 
-        {/* MODALE AJOUT (Style iOS Bottom Sheet en Mobile) */}
+        {/* MODALE */}
         {showAddModal && (
           <div className="modal-backdrop" onClick={()=>setShowAddModal(false)}>
             <div className="modal-sheet" onClick={e=>e.stopPropagation()}>
-              <div className="modal-handle"></div>
+              <div className="modal-handle mobile-only"></div>
               <div className="modal-header">
                 <h2>Nouvelle tâche</h2>
                 <button className="close-icon" onClick={()=>setShowAddModal(false)}><X size={24}/></button>
