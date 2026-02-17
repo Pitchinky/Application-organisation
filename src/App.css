@@ -22,7 +22,7 @@ body {
 .structured-web-layout { display: flex; flex-direction: column; height: 100vh; }
 
 /* --- HEADER & NAV --- */
-.main-header { display: flex; justify-content: space-between; padding: 15px 25px; background: var(--bg-color); }
+.main-header { display: flex; justify-content: space-between; padding: 15px 25px; background: var(--bg-color); z-index: 10; }
 .header-left, .header-right { display: flex; align-items: center; gap: 12px; }
 .date-title h1 { font-size: 18px; font-weight: 700; margin: 0; text-transform: capitalize; min-width: 150px; }
 .nav-arrows { display: flex; gap: 4px; }
@@ -45,7 +45,7 @@ body {
 .timeline-scroll-area { flex: 1; overflow-y: auto; padding: 0 20px; }
 .timeline-container { max-width: 600px; margin: 0 auto; padding-top: 20px; }
 
-.timeline-row { display: flex; min-height: 100px; /* Plus haut pour avoir de belles gélules */ transition: opacity 0.3s; }
+.timeline-row { display: flex; min-height: 100px; /* Hauteur pour gélules */ transition: opacity 0.3s; }
 .timeline-row.dimmed { opacity: 0.5; filter: grayscale(80%); }
 
 .time-col { width: 60px; text-align: right; padding-right: 15px; padding-top: 10px; display: flex; flex-direction: column; gap: 4px; }
@@ -58,22 +58,20 @@ body {
 
 .capsule-pill {
   width: 28px;
-  /* Hauteur dynamique : pour l'instant fixe mais allongée comme Structured */
   height: 60px; 
   border-radius: 14px;
   z-index: 1;
   margin-top: 5px;
   display: flex;
-  align-items: center; /* Icône au centre ou en haut */
+  align-items: center; 
   justify-content: center;
-  padding-top: 0; 
   box-shadow: 0 0 0 5px var(--bg-color); /* Bordure externe blanche */
-  transition: all 0.5s ease; /* Animation fluide du remplissage */
+  transition: all 0.5s ease;
   position: relative;
-  overflow: hidden; /* Important pour le dégradé */
+  overflow: hidden; 
 }
 
-/* Petit point si ce n'est pas la tâche active */
+/* Petit point inactif */
 .bullet-dot { width: 8px; height: 8px; border-radius: 50%; }
 
 /* Animation de pulse pour la tâche en cours */
@@ -96,7 +94,7 @@ body {
 .check-btn { background: none; border: none; cursor: pointer; padding: 0; }
 .checked-circle { width: 24px; height: 24px; background: #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
-/* --- RESTE (FAB, MODAL) --- */
+/* --- RESTE (FAB, MODAL, SPINNER) --- */
 .fab-btn { position: fixed; bottom: 30px; right: 30px; width: 56px; height: 56px; background: #FF2D55; border-radius: 50%; border: none; box-shadow: 0 5px 20px rgba(255, 45, 85, 0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; color: white; }
 .fab-btn:hover { transform: scale(1.1); }
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 999; }
@@ -114,3 +112,25 @@ body {
 .relative-container { position: relative; }
 .view-btn { background: white; border: 1px solid #eee; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; display: flex; gap: 5px; align-items: center; }
 .login-btn { background: #1C1C1E; color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; border: none; font-weight: 600; }
+.empty-state { text-align: center; margin-top: 50px; color: #999; }
+.welcome-box { text-align: center; margin-top: 50px; }
+.primary-btn { background: black; color: white; border: none; padding: 10px 20px; border-radius: 20px; font-weight: 600; cursor: pointer; }
+
+/* SPINNER DE CHARGEMENT */
+.loading-spinner-container {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
+.spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #E5E5EA;
+  border-top: 3px solid #1C1C1E; /* Noir */
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
