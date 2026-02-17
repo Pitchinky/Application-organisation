@@ -272,4 +272,118 @@ body {
   .top-bar {
     padding: 20px;
   }
+
+  /* --- NOUVEAUTÉS : Navigation de la Date --- */
+.date-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.icon-btn:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.subtitle {
+  margin-left: 45px; /* Pour l'aligner sous le titre */
+}
+
+/* --- NOUVEAUTÉS : Sélecteur Multi-Agendas --- */
+.filter-container {
+  position: relative;
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 20px;
+  border: 1px solid #E5E5EA;
+  background: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+  transition: 0.2s;
+}
+
+.filter-btn:hover {
+  background: #F9F9F9;
+}
+
+.cal-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 10px;
+  width: 250px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  border: 1px solid rgba(0,0,0,0.05);
+  z-index: 100;
+  overflow: hidden;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cal-dropdown-header {
+  padding: 15px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: #F9F9F9;
+  border-bottom: 1px solid #E5E5EA;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cal-option {
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.cal-option:hover {
+  background: #F2F2F7;
+}
+
+.cal-color-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cal-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 }
