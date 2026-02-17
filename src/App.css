@@ -1,471 +1,372 @@
-/* --- 1. CONFIGURATION GÉNÉRALE & VARIABLES --- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg-app: #F5F5F7;        /* Gris clair style Apple */
-  --bg-card: #FFFFFF;       /* Blanc pur */
-  --text-main: #1C1C1E;     /* Noir profond */
-  --text-muted: #8E8E93;    /* Gris texte secondaire */
-  --sidebar-bg: #1C1C1E;    /* Noir sidebar */
-  --sidebar-text: #FFFFFF;
-  --border-light: #E5E5EA;  /* Bordures subtiles */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --radius-card: 18px;
-  --radius-btn: 12px;
-}
-
-* {
-  box-sizing: border-box; /* Crucial pour les alignements */
+  --bg-color: #F8F8FA; /* Fond très clair */
+  --card-bg: #FFFFFF;
+  --text-primary: #2C2C2E;
+  --text-secondary: #8E8E93;
+  --accent-pink: #FF7EB6; /* Le rose du bouton + */
+  --line-color: #E5E5EA;
+  --hover-bg: #F2F2F7;
 }
 
 body {
   margin: 0;
-  padding: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: var(--bg-app);
-  color: var(--text-main);
-  -webkit-font-smoothing: antialiased;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
   height: 100vh;
-  overflow: hidden; /* Empêche le scroll global de la page */
+  overflow: hidden;
 }
 
-/* --- 2. LAYOUT PRINCIPAL (Sidebar + Contenu) --- */
-.structured-layout {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-}
-
-/* --- 3. SIDEBAR (Gauche) --- */
-.sidebar {
-  width: 80px;
-  background-color: var(--sidebar-bg);
+/* --- LAYOUT GLOBAL --- */
+.structured-web-layout {
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  max-width: 100vw;
+}
+
+/* --- 1. HEADER --- */
+.main-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 30px 0;
-  flex-shrink: 0; /* Empêche la sidebar de rétrécir */
-  z-index: 20;
-}
-
-.logo-area {
-  margin-bottom: 50px;
-}
-
-.app-icon {
-  width: 42px;
-  height: 42px;
+  padding: 15px 30px;
   background: white;
-  color: black;
-  border-radius: 14px;
+  border-bottom: 1px solid var(--line-color);
+}
+
+.header-left, .header-right {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 22px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-.nav-items {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-  width: 100%;
-  align-items: center;
-}
-
-.nav-btn {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.4);
-  cursor: pointer;
-  padding: 12px;
-  border-radius: var(--radius-btn);
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.nav-btn:hover {
-  color: white;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.nav-btn.active {
-  color: white;
-  background: rgba(255, 255, 255, 0.15);
-}
-
-/* --- 4. CONTENU PRINCIPAL (Droite) --- */
-.main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  background-color: var(--bg-app);
-}
-
-/* --- 5. HEADER (Barre du haut) --- */
-.top-bar {
-  padding: 40px 50px 20px 50px; /* Espace confortable */
-  display: flex;
-  justify-content: space-between; /* Date à gauche, Boutons à droite */
-  align-items: flex-start;
-  background: linear-gradient(180deg, var(--bg-app) 85%, rgba(245,245,247,0) 100%);
-  z-index: 10;
-  min-height: 100px;
-}
-
-/* Navigation Date (Flèches + Titre) */
-.date-display {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.date-nav {
-  display: flex;
-  align-items: center; /* Centre verticalement les flèches et le texte */
   gap: 15px;
 }
 
-.date-nav h2 {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-}
-
-.icon-btn {
-  background: white;
-  border: 1px solid var(--border-light);
-  cursor: pointer;
-  color: var(--text-main);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  transition: all 0.2s;
-  box-shadow: var(--shadow-sm);
-}
-
-.icon-btn:hover {
-  transform: scale(1.05);
-  background: #F9F9F9;
-}
-
-.icon-btn:active {
-  transform: scale(0.95);
-}
-
-.subtitle {
-  margin-left: 5px;
-  font-size: 14px;
-  color: var(--text-muted);
-  font-weight: 500;
-  text-transform: capitalize;
-}
-
-/* Actions (Bouton Agendas / Connexion) */
-.actions {
-  display: flex;
-  align-items: center;
-  padding-top: 5px;
-}
-
-/* --- 6. MENU DÉROULANT (Dropdown) --- */
-.filter-container {
-  position: relative; /* IMPORTANT : C'est l'ancre du menu */
-}
-
-.filter-btn {
+.date-title {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 20px;
-  border-radius: 25px;
-  border: none;
-  background: var(--text-main); /* Bouton noir */
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: opacity 0.2s;
+  margin-left: 10px;
 }
 
-.filter-btn:hover {
-  opacity: 0.9;
-}
-
-.cal-dropdown {
-  position: absolute; /* Flotte au-dessus */
-  top: 110%; /* Juste en dessous du bouton */
-  right: 0; /* Aligné à droite */
-  width: 280px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: var(--shadow-md);
-  border: 1px solid rgba(0,0,0,0.05);
-  z-index: 1000; /* Très haut pour passer au-dessus de tout */
-  overflow: hidden;
-  padding: 8px;
-  animation: slideIn 0.2s ease-out;
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.cal-dropdown-header {
-  padding: 10px 15px;
-  font-size: 12px;
+.date-title h1 {
+  font-size: 18px;
   font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  margin: 0;
+  text-transform: capitalize;
 }
 
-.cal-option {
+.nav-arrows {
+  display: flex;
+  gap: 5px;
+}
+
+.icon-btn, .nav-arrows button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  padding: 6px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
-  padding: 12px 15px;
+}
+
+.icon-btn:hover, .nav-arrows button:hover {
+  background: var(--hover-bg);
+}
+
+.inbox-btn {
+  background: white;
+  border: 1px solid var(--line-color);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   cursor: pointer;
-  border-radius: 10px;
-  transition: background 0.1s;
+  font-size: 13px;
+  color: var(--text-primary);
 }
 
-.cal-option:hover {
-  background-color: #F2F2F7;
+/* Switcher Jour/Semaine */
+.view-switcher {
+  background: var(--hover-bg);
+  padding: 3px;
+  border-radius: 8px;
+  display: flex;
 }
 
-.cal-color-dot {
-  width: 20px;
-  height: 20px;
+.view-btn {
+  border: none;
+  background: none;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
   border-radius: 6px;
-  margin-right: 12px;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.view-btn.active {
+  background: white;
+  color: black;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* --- 2. BARRE DES JOURS (DAY STRIP) --- */
+.day-strip {
+  display: flex;
+  justify-content: center; /* Centré comme sur le web */
+  padding: 15px 0;
+  background: var(--bg-color); /* Fond gris clair pour se détacher du header blanc */
+  gap: 20px;
+  overflow-x: auto;
+}
+
+.day-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  width: 50px;
+  opacity: 0.5;
+  transition: 0.2s;
+}
+
+.day-cell:hover { opacity: 0.8; }
+.day-cell.selected { opacity: 1; font-weight: 700; }
+
+.day-name {
+  font-size: 12px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.day-num {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.day-cell.today .day-num {
+  background: black;
+  color: white;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  border-radius: 50%;
 }
 
-.cal-name {
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.day-dots {
+  display: flex;
+  gap: 3px;
+  margin-top: 4px;
 }
 
-/* --- 7. TIMELINE (Zone de défilement) --- */
-.timeline-wrapper {
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+/* --- 3. TIMELINE --- */
+.timeline-scroll-area {
   flex: 1;
-  overflow-y: auto; /* Permet le scroll vertical */
-  padding: 0 50px 50px 50px;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.timeline-container {
+  max-width: 800px;
+  margin: 0 auto;
   position: relative;
 }
 
-.timeline {
-  max-width: 800px;
-  margin: 0 auto;
-  padding-top: 20px;
-}
-
-/* Ligne d'événement */
-.event-row {
+.timeline-row {
   display: flex;
-  min-height: 90px; /* Hauteur minimale pour aérer */
+  position: relative;
+  margin-bottom: 10px; /* Espace entre les événements */
+  min-height: 80px;
 }
 
 /* Colonne Heure */
 .time-col {
   width: 70px;
   text-align: right;
-  padding-right: 25px;
-  padding-top: 20px;
-  display: flex;
-  flex-direction: column;
+  padding-right: 20px;
+  padding-top: 15px;
 }
 
-.time-start {
-  font-weight: 600;
-  font-size: 15px;
-  color: var(--text-main);
+.time-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
-.time-end {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-top: 4px;
-}
-
-/* Colonne Visuelle (Ligne + Rond) */
+/* Colonne Visuelle (Ligne + Capsule) */
 .visual-col {
   width: 40px;
   position: relative;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
 }
 
-.line-segment {
+.vertical-line {
   position: absolute;
   top: 0;
-  bottom: 0;
+  bottom: -10px; /* Connecte au suivant */
   width: 2px;
-  background-color: var(--border-light);
+  background-color: var(--line-color);
   z-index: 1;
 }
 
-.event-row:last-child .line-segment {
-  background: linear-gradient(to bottom, var(--border-light) 20%, transparent 100%);
+/* La dernière ligne s'arrête en dégradé */
+.timeline-row:last-child .vertical-line {
+  background: linear-gradient(to bottom, var(--line-color) 40%, transparent 100%);
 }
 
-.bullet {
-  width: 14px;
-  height: 14px;
-  background-color: var(--bg-app); /* Trou au milieu */
-  border: 4px solid #000; /* La couleur sera écrasée par le style inline React */
-  border-radius: 50%;
+.capsule-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px; /* Forme un peu carrée arrondie */
   z-index: 2;
-  margin-top: 24px; /* Alignement optique avec l'heure */
-  box-shadow: 0 0 0 4px var(--bg-app); /* Marge blanche autour */
+  margin-top: 10px; /* Alignement avec l'heure */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 4px var(--bg-color); /* Marge blanche autour */
 }
 
 /* Colonne Carte */
 .card-col {
   flex: 1;
-  padding-bottom: 25px;
+  padding-bottom: 10px;
 }
 
-.event-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-card);
-  padding: 20px;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  border: 1px solid rgba(0,0,0,0.02);
-  cursor: default;
-}
-
-.event-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-md);
-}
-
-.card-content h3 {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.location-badge {
-  display: inline-flex;
+.structured-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 0; /* Padding géré à l'intérieur */
+  display: flex;
   align-items: center;
-  margin-top: 10px;
-  font-size: 12px;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: transform 0.2s;
+  min-height: 70px;
+}
+
+.structured-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.06);
+}
+
+.card-left {
+  padding: 15px;
+  border-radius: 12px 0 0 12px; /* Coins arrondis à gauche */
+  flex: 1;
+}
+
+.event-range {
+  font-size: 11px;
+  color: var(--text-secondary);
   font-weight: 500;
-  color: var(--text-muted);
-  background: #F9F9F9;
-  padding: 6px 10px;
-  border-radius: 8px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.event-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.event-loc {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.card-right {
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  border-left: 1px solid var(--hover-bg);
+  height: 100%;
+}
+
+.check-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: transform 0.1s;
+}
+
+.check-btn:active { transform: scale(0.9); }
+
+/* --- FAB (Bouton flottant) --- */
+.fab-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 56px;
+  height: 56px;
+  background-color: var(--accent-pink);
+  border-radius: 50%;
+  border: none;
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 126, 182, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+  z-index: 100;
+}
+
+.fab-btn:hover {
+  transform: scale(1.1);
 }
 
 /* Empty State */
 .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-top: 100px;
-  color: var(--text-muted);
+  text-align: center;
+  padding-top: 50px;
+  color: var(--text-secondary);
 }
 
-.empty-state p {
-  margin-top: 20px;
-  font-size: 16px;
-}
-
-/* Boutons de login */
-.login-btn {
-  background: var(--text-main);
+.add-task-btn {
+  background: var(--text-primary);
   color: white;
   border: none;
-  padding: 10px 20px;
+  padding: 8px 16px;
   border-radius: 20px;
-  font-weight: 600;
+  margin-top: 10px;
   cursor: pointer;
 }
 
-.big-login-btn {
-  background: var(--text-main);
+.login-btn {
+  background: black;
   color: white;
   border: none;
-  padding: 16px 32px;
-  border-radius: 30px;
-  font-size: 18px;
+  padding: 8px 16px;
+  border-radius: 8px;
   font-weight: 600;
-  margin-top: 30px;
   cursor: pointer;
-  box-shadow: var(--shadow-md);
-  transition: transform 0.2s;
 }
 
-.big-login-btn:hover {
-  transform: scale(1.03);
+.welcome-box {
+  text-align: center;
+  margin-top: 50px;
 }
-
-/* --- 8. MOBILE RESPONSIVE --- */
-@media (max-width: 768px) {
-  .structured-layout {
-    flex-direction: column-reverse; /* Menu en bas */
-  }
-
-  .sidebar {
-    width: 100%;
-    height: 70px;
-    flex-direction: row;
-    justify-content: space-around;
-    padding: 0;
-    border-top: 1px solid rgba(255,255,255,0.1);
-  }
-
-  .logo-area { display: none; }
-  
-  .nav-items { 
-    flex-direction: row; 
-    width: 100%; 
-    justify-content: space-around; 
-    gap: 0;
-  }
-
-  .main-content {
-    height: calc(100vh - 70px);
-  }
-
-  .top-bar {
-    padding: 20px;
-    min-height: auto;
-  }
-
-  .timeline-wrapper {
-    padding: 0 15px 15px 15px;
-  }
-
-  .time-col {
-    width: 50px;
-    padding-right: 10px;
-  }
-
-  .time-start { font-size: 13px; }
-  
-  .date-nav h2 {
-    font-size: 20px;
-  }
+.primary-btn {
+  background: black; color: white; border: none; padding: 12px 24px; border-radius: 20px; font-weight: 600; cursor: pointer;
 }

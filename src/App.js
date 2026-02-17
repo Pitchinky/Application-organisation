@@ -1,8 +1,11 @@
 /* global google */
 import React, { useState, useEffect } from 'react';
 import { gapi } from 'gapi-script';
-import { Calendar, Settings, ChevronLeft, ChevronRight, Layout, Clock, Filter, Check } from 'lucide-react';
-import { format, isSameDay, parseISO, addDays, subDays } from 'date-fns';
+import { 
+  Settings, ChevronLeft, ChevronRight, Inbox, CheckCircle, Circle, 
+  Menu, Plus, Clock, Calendar as CalIcon 
+} from 'lucide-react';
+import { format, addDays, subDays, isSameDay, startOfWeek, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import './App.css';
 
@@ -14,18 +17,12 @@ const DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/
 function App() {
   const [events, setEvents] = useState([]);
   const [calendars, setCalendars] = useState([]);
-  
-  // NOUVEAU : Tableau pour stocker PLUSIEURS agendas sélectionnés
   const [selectedCalendarIds, setSelectedCalendarIds] = useState(['primary']);
-  
-  // NOUVEAU : Gestion de la date affichée
   const [currentDate, setCurrentDate] = useState(new Date());
-  
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [tokenClient, setTokenClient] = useState(null);
-  const [showCalMenu, setShowCalMenu] = useState(false); // Afficher/Cacher le menu des agendas
 
-  // Initialisation GAPI & Vérification Session
+  // --- INITIALISATION (GAPI + GIS) ---
   useEffect(() => {
     gapi.load("client", async () => {
       await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
@@ -39,7 +36,6 @@ function App() {
     });
   }, []);
 
-  // Initialisation GIS
   useEffect(() => {
     try {
       const client = google.accounts.oauth2.initTokenClient({
@@ -59,16 +55,12 @@ function App() {
     } catch (err) { console.error(err); }
   }, []);
 
-  // Recharge les événements à chaque changement de date OU d'agendas sélectionnés
   useEffect(() => {
-    if (isSignedIn && calendars.length > 0) {
-      fetchAllEvents();
-    }
-  }, [currentDate, selectedCalendarIds, calendars, isSignedIn]);
+    if (isSignedIn) fetchAllEvents();
+  }, [currentDate, selectedCalendarIds, isSignedIn]);
 
   const loadData = async () => {
     await loadCalendars();
-    // fetchAllEvents sera déclenché par le useEffect
   };
 
   const loadCalendars = async () => {
@@ -78,18 +70,12 @@ function App() {
     } catch (e) { console.error(e); }
   };
 
-  // NOUVEAU : Récupère et fusionne les événements de TOUS les agendas sélectionnés
   const fetchAllEvents = async () => {
-    if (selectedCalendarIds.length === 0) {
-      setEvents([]);
-      return;
-    }
-
+    if (selectedCalendarIds.length === 0) return setEvents([]);
     try {
       const startOfDay = new Date(currentDate); startOfDay.setHours(0,0,0,0);
       const endOfDay = new Date(currentDate); endOfDay.setHours(23,59,59,999);
 
-      // Créer une promesse d'appel API pour CHAQUE calendrier sélectionné
       const promises = selectedCalendarIds.map(async (calId) => {
         const response = await gapi.client.calendar.events.list({
           'calendarId': calId,
@@ -99,168 +85,155 @@ function App() {
           'singleEvents': true,
           'orderBy': 'startTime',
         });
-        
-        // Retrouver la couleur de ce calendrier
         const cal = calendars.find(c => c.id === calId);
-        const color = cal?.backgroundColor || '#007AFF';
-
-        // Attacher la couleur à chaque événement pour l'affichage
-        return response.result.items.map(event => ({ ...event, color }));
+        // On force des couleurs pastels si possible, sinon couleur Google
+        return response.result.items.map(event => ({ ...event, color: cal?.backgroundColor }));
       });
 
-      // Attendre que TOUS les appels Google soient terminés
       const results = await Promise.all(promises);
-      
-      // Fusionner tous les tableaux d'événements en un seul et trier par heure
-      const mergedEvents = results.flat().sort((a, b) => {
-        const timeA = new Date(a.start.dateTime || a.start.date);
-        const timeB = new Date(b.start.dateTime || b.start.date);
-        return timeA - timeB;
+      const merged = results.flat().sort((a, b) => {
+        return new Date(a.start.dateTime || a.start.date) - new Date(b.start.dateTime || b.start.date);
       });
-
-      setEvents(mergedEvents);
+      setEvents(merged);
     } catch (e) {
-      console.error(e);
       if(e.status === 401) { setIsSignedIn(false); localStorage.clear(); }
     }
   };
 
-  // NOUVEAU : Gérer la sélection multiple d'agendas
-  const toggleCalendar = (id) => {
-    setSelectedCalendarIds(prev => {
-      if (prev.includes(id)) {
-        return prev.filter(calId => calId !== id); // Le retirer
-      } else {
-        return [...prev, id]; // L'ajouter
-      }
-    });
-  };
-
-  // NOUVEAU : Navigation dans le temps
-  const prevDay = () => setCurrentDate(prev => subDays(prev, 1));
-  const nextDay = () => setCurrentDate(prev => addDays(prev, 1));
-  const goToToday = () => setCurrentDate(new Date());
-
   const handleLogin = () => tokenClient.requestAccessToken();
 
+  // Générer les jours de la semaine pour la barre du haut
+  const weekDays = Array.from({ length: 7 }).map((_, i) => {
+    const start = startOfWeek(currentDate, { weekStartsOn: 1 }); // Lundi
+    return addDays(start, i);
+  });
+
   return (
-    <div className="structured-layout">
-      {/* SIDEBAR */}
-      <nav className="sidebar">
-        <div className="logo-area">
-          <div className="app-icon">S</div>
-        </div>
-        <div className="nav-items">
-          <button className="nav-btn active"><Layout size={20} /></button>
-          <button className="nav-btn" onClick={goToToday} title="Aujourd'hui"><Calendar size={20} /></button>
-          <button className="nav-btn"><Settings size={20} /></button>
-        </div>
-      </nav>
-
-      {/* CONTENU PRINCIPAL */}
-      <main className="main-content">
-        <header className="top-bar">
-          <div className="date-display">
-            <div className="date-nav">
-              <button onClick={prevDay} className="icon-btn"><ChevronLeft size={24} /></button>
-              <h2>{isSameDay(currentDate, new Date()) ? "Aujourd'hui" : format(currentDate, 'EEEE d MMM', { locale: fr })}</h2>
-              <button onClick={nextDay} className="icon-btn"><ChevronRight size={24} /></button>
+    <div className="structured-web-layout">
+      
+      {/* HEADER TYPE STRUCTURED */}
+      <header className="main-header">
+        <div className="header-left">
+          <button className="icon-btn"><Menu size={20} /></button>
+          <button className="inbox-btn"><Inbox size={16} /> Inbox</button>
+          <div className="date-title">
+            <h1>{format(currentDate, 'MMMM yyyy', { locale: fr })}</h1>
+            <div className="nav-arrows">
+              <button onClick={() => setCurrentDate(subDays(currentDate, 1))}><ChevronLeft size={16}/></button>
+              <button onClick={() => setCurrentDate(addDays(currentDate, 1))}><ChevronRight size={16}/></button>
             </div>
-            <p className="subtitle">{format(currentDate, 'MMMM yyyy', { locale: fr })}</p>
           </div>
-          
-          <div className="actions">
-            {isSignedIn ? (
-              <div className="filter-container">
-                <button 
-                  className="filter-btn" 
-                  onClick={() => setShowCalMenu(!showCalMenu)}
-                >
-                  <Filter size={16} /> Agendas ({selectedCalendarIds.length})
-                </button>
-
-                {showCalMenu && (
-                  <div className="cal-dropdown">
-                    <div className="cal-dropdown-header">Mes Agendas</div>
-                    {calendars.map(cal => {
-                      const isSelected = selectedCalendarIds.includes(cal.id);
-                      return (
-                        <div 
-                          key={cal.id} 
-                          className="cal-option" 
-                          onClick={() => toggleCalendar(cal.id)}
-                        >
-                          <div className="cal-color-dot" style={{ backgroundColor: cal.backgroundColor }}>
-                            {isSelected && <Check size={10} color="white" />}
-                          </div>
-                          <span className="cal-name">{cal.summaryOverride || cal.summary}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <button onClick={handleLogin} className="login-btn">Connexion</button>
-            )}
-          </div>
-        </header>
-
-        <div className="timeline-wrapper" onClick={() => setShowCalMenu(false)}>
-           {isSignedIn ? (
-             <div className="timeline">
-               {events.length > 0 ? events.map((event, i) => {
-                 const isAllDay = !event.start.dateTime;
-                 const startTime = isAllDay ? null : parseISO(event.start.dateTime);
-                 const endTime = isAllDay ? null : parseISO(event.end.dateTime);
-                 
-                 return (
-                   <div key={event.id} className="event-row">
-                     <div className="time-col">
-                       <span className="time-start">
-                         {isAllDay ? 'Jour' : format(startTime, 'HH:mm')}
-                       </span>
-                       <span className="time-end">
-                         {!isAllDay && format(endTime, 'HH:mm')}
-                       </span>
-                     </div>
-                     
-                     <div className="visual-col">
-                       <div className="line-segment"></div>
-                       {/* Le point prend la couleur de l'agenda */}
-                       <div className="bullet" style={{ borderColor: event.color }}></div>
-                     </div>
-
-                     <div className="card-col">
-                       <div className="event-card" style={{ borderLeft: `4px solid ${event.color}` }}>
-                         <div className="card-content">
-                           <h3>{event.summary}</h3>
-                           {event.location && (
-                             <div className="location-badge">📍 {event.location}</div>
-                           )}
-                         </div>
-                       </div>
-                     </div>
-                   </div>
-                 );
-               }) : (
-                 <div className="empty-state">
-                   <Clock size={48} color="#ddd" />
-                   <p>Rien de prévu pour ce jour.</p>
-                 </div>
-               )}
-             </div>
-           ) : (
-             <div className="welcome-screen">
-               <h1>Ton Planning Parfait</h1>
-               <p>Connecte ton compte Google pour voir tes journées.</p>
-               <button onClick={handleLogin} className="big-login-btn">
-                 Synchroniser
-               </button>
-             </div>
-           )}
         </div>
-      </main>
+        
+        <div className="header-right">
+          <div className="view-switcher">
+            <button className="view-btn active">Jour</button>
+            <button className="view-btn">Semaine</button>
+          </div>
+          <button className="icon-btn"><Settings size={20} /></button>
+          {!isSignedIn && <button onClick={handleLogin} className="login-btn">Connexion</button>}
+        </div>
+      </header>
+
+      {/* BARRE DES JOURS (Horizontal Day Strip) */}
+      <div className="day-strip">
+        {weekDays.map((day, i) => {
+          const isSelected = isSameDay(day, currentDate);
+          const isToday = isSameDay(day, new Date());
+          return (
+            <div 
+              key={i} 
+              className={`day-cell ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`}
+              onClick={() => setCurrentDate(day)}
+            >
+              <span className="day-name">{format(day, 'EEE', { locale: fr })}</span>
+              <span className="day-num">{format(day, 'd')}</span>
+              {/* Petits points de charge (simulés) */}
+              <div className="day-dots">
+                {i % 2 === 0 && <div className="dot" style={{background: '#ff7eb6'}}></div>}
+                {i % 3 === 0 && <div className="dot" style={{background: '#7afcff'}}></div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* TIMELINE PRINCIPALE */}
+      <div className="timeline-scroll-area">
+        <div className="timeline-container">
+          
+          {isSignedIn ? (
+            events.length > 0 ? events.map((event, index) => {
+              const isAllDay = !event.start.dateTime;
+              const startTime = isAllDay ? null : parseISO(event.start.dateTime);
+              const endTime = isAllDay ? null : parseISO(event.end.dateTime);
+              const duration = startTime && endTime ? Math.round((endTime - startTime) / 60000) : 0;
+              
+              // Couleur pastel dérivée ou par défaut
+              const eventColor = event.color || '#34C759'; 
+              
+              return (
+                <div key={event.id} className="timeline-row">
+                  {/* HEURE */}
+                  <div className="time-col">
+                    <span className="time-text">
+                      {startTime ? format(startTime, 'HH:mm') : 'Journée'}
+                    </span>
+                  </div>
+
+                  {/* VISUEL CENTRAL (Ligne + Capsule) */}
+                  <div className="visual-col">
+                    <div className="vertical-line"></div>
+                    <div className="capsule-icon" style={{ backgroundColor: eventColor }}>
+                      <Clock size={14} color="white" />
+                    </div>
+                  </div>
+
+                  {/* CARTE ÉVÉNEMENT */}
+                  <div className="card-col">
+                    <div className="structured-card">
+                      <div className="card-left" style={{ borderLeft: `4px solid ${eventColor}` }}>
+                        <div className="card-info">
+                          <span className="event-range">
+                             {startTime && endTime ? `${format(startTime, 'HH:mm')} - ${format(endTime, 'HH:mm')}` : 'Toute la journée'} 
+                             {duration > 0 && ` (${Math.round(duration/60)}h${duration%60 > 0 ? duration%60 : ''})`}
+                          </span>
+                          <h3 className="event-title">{event.summary}</h3>
+                          {event.location && <p className="event-loc">📍 {event.location}</p>}
+                        </div>
+                      </div>
+                      <div className="card-right">
+                         {/* Checkbox "Structured" */}
+                         <button className="check-btn">
+                           <Circle size={22} color="#ddd" />
+                         </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }) : (
+              <div className="empty-state">
+                <p>Rien de prévu 🎉</p>
+                <button className="add-task-btn">Ajouter une tâche</button>
+              </div>
+            )
+          ) : (
+             <div className="welcome-box">
+               <h2>Bienvenue sur Structured Web</h2>
+               <button onClick={handleLogin} className="primary-btn">Connecter Google Calendar</button>
+             </div>
+          )}
+          
+          {/* Ligne vide pour scroller jusqu'en bas */}
+          <div style={{height: '100px'}}></div>
+        </div>
+      </div>
+
+      {/* FAB (Bouton Plus flottant) */}
+      <button className="fab-btn">
+        <Plus size={24} color="white" />
+      </button>
     </div>
   );
 }
