@@ -2,12 +2,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { gapi } from 'gapi-script';
 import { 
-  Settings, ChevronLeft, ChevronRight, Check, Circle, 
-  Menu, Plus, Clock, Filter, X, 
+  Settings, Check, Plus, Filter, X, 
   Cloud, Sun, CloudRain, Snowflake, CloudLightning, Wind, Umbrella, 
-  Layout, Calendar as CalIcon, Inbox, User 
+  Layout, Calendar as CalIcon, Inbox 
 } from 'lucide-react';
-import { format, addDays, subDays, isSameDay, startOfWeek, parseISO, differenceInMinutes } from 'date-fns';
+import { format, addDays, isSameDay, startOfWeek, parseISO, differenceInMinutes } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import './App.css';
 
@@ -24,9 +23,7 @@ function App() {
   const [completedEvents, setCompletedEvents] = useState({});
   const [forecast, setForecast] = useState([]);
   
-  // Navigation
-  const [activeTab, setActiveTab] = useState('timeline'); // 'timeline', 'inbox', 'calendar'
-
+  const [activeTab, setActiveTab] = useState('timeline');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [now, setNow] = useState(new Date()); 
   const [isSignedIn, setIsSignedIn] = useState(false);
@@ -116,7 +113,6 @@ function App() {
     } catch(e) { if(e.status===401){setIsSignedIn(false);localStorage.clear();} } finally { setIsLoading(false); }
   };
 
-  // --- HELPERS ---
   const getDailySummary = (date) => {
     if (forecast.length === 0) return null;
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -313,7 +309,29 @@ function App() {
           </nav>
         )}
 
-        {/* MODALE */}
+        {/* --- MODALE CALENDRIERS (AJOUTÉE ICI) --- */}
+        {showCalMenu && (
+          <div className="modal-backdrop" onClick={()=>setShowCalMenu(false)}>
+            <div className="modal-sheet" onClick={e=>e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Calendriers</h2>
+                <button className="close-icon" onClick={()=>setShowCalMenu(false)}><X size={24}/></button>
+              </div>
+              <div className="cal-list">
+                {calendars.map(c => (
+                  <div key={c.id} className="cal-item" onClick={() => toggleCalendar(c.id)}>
+                    <div className="dot-check" style={{background:c.backgroundColor}}>
+                      {selectedCalendarIds.includes(c.id) && <Check size={12} color="white"/>}
+                    </div>
+                    <span>{c.summary}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODALE TÂCHE */}
         {showAddModal && (
           <div className="modal-backdrop" onClick={()=>setShowAddModal(false)}>
             <div className="modal-sheet" onClick={e=>e.stopPropagation()}>

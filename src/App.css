@@ -169,8 +169,14 @@ body {
 .nav-add-btn:active { transform: scale(0.95); }
 
 /* --- MODAL MOBILE (Bottom Sheet) --- */
-.modal-backdrop { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: flex-end; }
-.modal-sheet { background: white; width: 100%; border-radius: 24px 24px 0 0; padding: 25px; padding-bottom: 50px; animation: slideUp 0.3s ease-out; box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
+.modal-backdrop { 
+    position: fixed; /* IMPORTANT: Fixed pour passer au dessus de la nav fixed */
+    top: 0; left: 0; right: 0; bottom: 0; 
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); 
+    z-index: 20000; /* > 9999 (navbar) */
+    display: flex; align-items: flex-end; justify-content: center;
+}
+.modal-sheet { background: white; width: 100%; border-radius: 24px 24px 0 0; padding: 25px; padding-bottom: 50px; animation: slideUp 0.3s ease-out; box-shadow: 0 -10px 40px rgba(0,0,0,0.1); max-height: 80vh; overflow-y: auto; }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .modal-handle { width: 40px; height: 5px; background: #E5E5EA; border-radius: 3px; margin: 0 auto 20px auto; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
@@ -181,12 +187,17 @@ body {
 .btn-save { width: 100%; padding: 16px; background: var(--text-main); color: white; border: none; border-radius: 16px; font-size: 17px; font-weight: 700; cursor: pointer; }
 .close-icon { background: #F2F2F7; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
-/* Menu Dropdown */
+/* Styles Calendrier (Liste) */
+.cal-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.cal-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; cursor: pointer; }
+.cal-item:active { background-color: #F2F2F7; }
+.dot-check { width: 24px; height: 24px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+
+/* Menu Dropdown (Desktop) */
 .dropdown-menu { position: absolute; top: 50px; right: 0; background: white; padding: 10px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); z-index: 100; min-width: 220px; }
 .dropdown-item { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; }
 .dropdown-item:hover { background: #F2F2F7; }
 .cal-filter-wrapper { position: relative; }
-.dot-check { width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
 
 /* Loader */
 .loader { display: flex; justify-content: center; padding: 40px; }
