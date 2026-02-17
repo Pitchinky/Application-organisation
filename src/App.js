@@ -5,7 +5,7 @@ import {
   Settings, ChevronLeft, ChevronRight, Check, Circle, 
   Menu, Plus, Clock, Filter, X, 
   Cloud, Sun, CloudRain, Snowflake, CloudLightning, Wind, Umbrella, 
-  Layout, Calendar as CalIcon, Inbox 
+  Layout, Calendar as CalIcon, Inbox, User 
 } from 'lucide-react';
 import { format, addDays, subDays, isSameDay, startOfWeek, parseISO, differenceInMinutes } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -18,13 +18,15 @@ const SCOPES = "https://www.googleapis.com/auth/calendar.events";
 const DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest";
 
 function App() {
-  // --- ÉTATS ---
   const [events, setEvents] = useState([]);
   const [calendars, setCalendars] = useState([]);
   const [selectedCalendarIds, setSelectedCalendarIds] = useState(['primary']);
   const [completedEvents, setCompletedEvents] = useState({});
   const [forecast, setForecast] = useState([]);
   
+  // Navigation
+  const [activeTab, setActiveTab] = useState('timeline'); // 'timeline', 'inbox', 'calendar'
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [now, setNow] = useState(new Date()); 
   const [isSignedIn, setIsSignedIn] = useState(false);
@@ -154,13 +156,13 @@ function App() {
   return (
     <div className="layout-wrapper">
       
-      {/* SIDEBAR (Visible uniquement sur Desktop) */}
+      {/* SIDEBAR (Desktop) */}
       <nav className="desktop-sidebar">
         <div className="sidebar-logo">S</div>
         <div className="sidebar-menu">
-          <button className="sidebar-btn active"><Layout size={20} /> Timeline</button>
-          <button className="sidebar-btn"><Inbox size={20} /> Inbox</button>
-          <button className="sidebar-btn"><CalIcon size={20} /> Calendrier</button>
+          <button className={`sidebar-btn ${activeTab==='timeline'?'active':''}`} onClick={()=>setActiveTab('timeline')}><Layout size={20} /> Timeline</button>
+          <button className={`sidebar-btn ${activeTab==='inbox'?'active':''}`} onClick={()=>setActiveTab('inbox')}><Inbox size={20} /> Inbox</button>
+          <button className={`sidebar-btn ${activeTab==='calendar'?'active':''}`} onClick={()=>setActiveTab('calendar')}><CalIcon size={20} /> Calendrier</button>
         </div>
         <div className="sidebar-bottom">
           <button className="sidebar-btn"><Settings size={20} /></button>
@@ -169,7 +171,7 @@ function App() {
 
       <div className="app-container">
         
-        {/* HEADER */}
+        {/* HEADER FIXE */}
         <header className="app-header">
           <div className="header-top">
             <div className="date-block">
@@ -183,12 +185,15 @@ function App() {
             </div>
             
             <div className="header-actions">
-              <div className="cal-filter-wrapper">
-                 <button className="icon-btn" onClick={()=>setShowCalMenu(!showCalMenu)}><Filter size={18}/></button>
-                 {showCalMenu && <div className="dropdown-menu">{calendars.map(c=>(<div key={c.id} className="dropdown-item" onClick={()=>toggleCalendar(c.id)}><div className="dot-check" style={{background:c.backgroundColor}}>{selectedCalendarIds.includes(c.id)&&<Check size={12} color="white"/>}</div><span>{c.summaryOverride||c.summary}</span></div>))}</div>}
-              </div>
-              <button className="desktop-add-btn" onClick={()=>setShowAddModal(true)}><Plus size={16} /> Ajouter</button>
-              {!isSignedIn && <button onClick={handleLogin} className="login-btn-small">Login</button>}
+               {/* Sur mobile, on cache ces boutons car ils sont ailleurs */}
+               <div className="desktop-only-actions">
+                  <div className="cal-filter-wrapper">
+                     <button className="icon-btn" onClick={()=>setShowCalMenu(!showCalMenu)}><Filter size={18}/></button>
+                     {showCalMenu && <div className="dropdown-menu">{calendars.map(c=>(<div key={c.id} className="dropdown-item" onClick={()=>toggleCalendar(c.id)}><div className="dot-check" style={{background:c.backgroundColor}}>{selectedCalendarIds.includes(c.id)&&<Check size={12} color="white"/>}</div><span>{c.summaryOverride||c.summary}</span></div>))}</div>}
+                  </div>
+                  <button className="desktop-add-btn" onClick={()=>setShowAddModal(true)}><Plus size={16} /> Ajouter</button>
+               </div>
+               {!isSignedIn && <button onClick={handleLogin} className="login-btn-small">Login</button>}
             </div>
           </div>
 
@@ -217,7 +222,7 @@ function App() {
           </div>
         </header>
 
-        {/* TIMELINE */}
+        {/* TIMELINE AREA */}
         <main className="timeline-area" onClick={()=>setShowCalMenu(false)}>
            {isSignedIn ? (
              <div className="timeline-content">
@@ -276,11 +281,36 @@ function App() {
            )}
         </main>
 
-        {/* FAB (Mobile Only) */}
+        {/* --- NOUVEAU : BARRE DE NAVIGATION DU BAS (MOBILE) --- */}
         {isSignedIn && (
-          <button className="fab mobile-only" onClick={()=>setShowAddModal(true)}>
-            <Plus size={32} color="white" />
-          </button>
+          <nav className="mobile-bottom-nav">
+             <button className={`nav-item ${activeTab==='inbox'?'active':''}`} onClick={()=>setActiveTab('inbox')}>
+                <Inbox size={24} />
+                <span>Inbox</span>
+             </button>
+             
+             <button className={`nav-item ${activeTab==='timeline'?'active':''}`} onClick={()=>setActiveTab('timeline')}>
+                <Layout size={24} />
+                <span>Timeline</span>
+             </button>
+             
+             {/* BOUTON CENTRAL AJOUT */}
+             <div className="nav-add-container">
+               <button className="nav-add-btn" onClick={()=>setShowAddModal(true)}>
+                 <Plus size={28} color="white" />
+               </button>
+             </div>
+
+             <button className={`nav-item ${activeTab==='calendar'?'active':''}`} onClick={()=>setActiveTab('calendar')}>
+                <CalIcon size={24} />
+                <span>Agenda</span>
+             </button>
+
+             <button className="nav-item" onClick={()=>setShowCalMenu(!showCalMenu)}>
+                <Filter size={24} />
+                <span>Filtres</span>
+             </button>
+          </nav>
         )}
 
         {/* MODALE */}
