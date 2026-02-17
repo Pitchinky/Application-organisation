@@ -18,9 +18,10 @@ body {
   font-family: 'Inter', -apple-system, sans-serif;
   background-color: var(--bg-app);
   color: var(--text-main);
-  /* Utilisation de dvh pour gérer la barre d'adresse mobile dynamique */
+  /* Force l'app à prendre exactement la hauteur visible */
   height: 100dvh; 
-  overflow: hidden;
+  width: 100vw;
+  overflow: hidden; /* Empêche le scroll global du corps */
 }
 
 /* =========================================
@@ -129,15 +130,21 @@ body {
 
 /* --- BARRE DE NAVIGATION (MOBILE ONLY) --- */
 .mobile-bottom-nav {
-  position: absolute; bottom: 0; left: 0; right: 0;
+  position: fixed; /* <--- C'est LA clé : fixé à l'écran, pas au contenu */
+  bottom: 0; 
+  left: 0; 
+  right: 0;
   height: var(--nav-height);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid rgba(0,0,0,0.05);
-  display: flex; justify-content: space-around; align-items: flex-start;
+  display: flex; 
+  justify-content: space-around; 
+  align-items: flex-start;
   padding-top: 10px;
-  padding-bottom: env(safe-area-inset-bottom); /* CRUCIAL : Espace pour la barre de swipe iPhone */
-  z-index: 100;
+  /* Indispensable pour l'iPhone : ajoute l'espace de la barre de swipe */
+  padding-bottom: env(safe-area-inset-bottom); 
+  z-index: 9999; /* Toujours au-dessus de tout */
 }
 
 .nav-item {
