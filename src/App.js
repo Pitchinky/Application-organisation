@@ -1,10 +1,10 @@
 /* global google */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { gapi } from 'gapi-script';
 import { 
   Settings, ChevronLeft, ChevronRight, Check, Circle, 
   Menu, Plus, Clock, Filter, X, 
-  Cloud, Sun, CloudRain, Snowflake, CloudLightning, Wind, Umbrella 
+  Cloud, Sun, CloudRain, Snowflake, CloudLightning, Wind, Umbrella, Calendar as CalIcon 
 } from 'lucide-react';
 import { format, addDays, subDays, isSameDay, startOfWeek, parseISO, differenceInMinutes } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -17,12 +17,11 @@ const SCOPES = "https://www.googleapis.com/auth/calendar.events";
 const DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest";
 
 function App() {
-  // --- ÉTATS ---
   const [events, setEvents] = useState([]);
   const [calendars, setCalendars] = useState([]);
   const [selectedCalendarIds, setSelectedCalendarIds] = useState(['primary']);
   const [completedEvents, setCompletedEvents] = useState({});
-  const [forecast, setForecast] = useState([]); // Liste des prévisions 5 jours
+  const [forecast, setForecast] = useState([]);
   
   const [currentDate, setCurrentDate] = useState(new Date());
   const [now, setNow] = useState(new Date()); 
@@ -35,14 +34,16 @@ function App() {
   const [newTaskTime, setNewTaskTime] = useState("12:00");
   const [newTaskDuration, setNewTaskDuration] = useState(60);
   const [tokenClient, setTokenClient] = useState(null);
+  
+  // Référence pour scroller automatiquement vers l'heure actuelle
+  const nowRef = useRef(null);
 
-  // 1. Initialiser GAPI
+  // --- INITIALISATION ---
   useEffect(() => {
     gapi.load("client", async () => {
       await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
       const savedCompleted = JSON.parse(localStorage.getItem('completed_tasks') || '{}');
       setCompletedEvents(savedCompleted);
-      
       const token = localStorage.getItem('g_token');
       const expiry = localStorage.getItem('g_expiry');
       if (token && expiry && Date.now() < parseInt(expiry)) {
@@ -53,13 +54,11 @@ function App() {
     });
   }, []);
 
-  // 2. Initialiser GIS
   useEffect(() => {
     const initClient = () => {
       if (window.google && window.google.accounts) {
         const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope: SCOPES,
+          client_id: CLIENT_ID, scope: SCOPES,
           callback: (resp) => {
             if (resp.access_token) {
               const expiresIn = (resp.expires_in || 3599) * 1000;
@@ -76,29 +75,30 @@ function App() {
     initClient();
   }, []);
 
-  // 3. Charger les Prévisions Météo (Forecast 5 jours / 3h)
   useEffect(() => {
     if (!WEATHER_KEY) return;
-    navigator.geolocation.getCurrentPosition(async (position) => {
+    navigator.geolocation.getCurrentPosition(async (pos) => {
       try {
-        const { latitude, longitude } = position.coords;
-        const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&lang=fr&appid=${WEATHER_KEY}`);
+        const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&units=metric&lang=fr&appid=${WEATHER_KEY}`);
         const data = await res.json();
         if (data.list) setForecast(data.list);
-      } catch (error) { console.error("Erreur Météo", error); }
+      } catch (e) { console.error(e); }
     });
   }, []);
 
-  // Timer minuteur
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 
-  // Chargement events au changement de date
+  useEffect(() => { if (isSignedIn) fetchAllEvents(); }, [currentDate, selectedCalendarIds, isSignedIn]);
+
+  // Scroll automatique vers l'événement en cours au chargement
   useEffect(() => {
-    if (isSignedIn) fetchAllEvents();
-  }, [currentDate, selectedCalendarIds, isSignedIn]);
+    if (!isLoading && events.length > 0 && nowRef.current) {
+      nowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [events, isLoading]);
 
   const loadData = async () => await loadCalendars();
   const loadCalendars = async () => { try { const r = await gapi.client.calendar.calendarList.list(); setCalendars(r.result.items); } catch(e){} };
@@ -121,29 +121,15 @@ function App() {
     } catch(e) { if(e.status===401){setIsSignedIn(false);localStorage.clear();} } finally { setIsLoading(false); }
   };
 
-  // --- LOGIQUE MÉTÉO INTELLIGENTE ---
-  // Analyse toute la journée pour trouver le pire scénario (pluie max)
+  // --- HELPERS ---
   const getDailySummary = (date) => {
     if (forecast.length === 0) return null;
     const dateStr = format(date, 'yyyy-MM-dd');
-    
-    // 1. Tous les créneaux de cette journée
     const daySlots = forecast.filter(item => item.dt_txt.includes(dateStr));
     if (daySlots.length === 0) return null;
-
-    // 2. Risque max de pluie sur la journée (0 à 1)
     const maxPop = Math.max(...daySlots.map(slot => slot.pop));
-
-    // 3. Icône la plus "grave" (Pluie/Orage > Nuage > Soleil)
-    const worstSlot = daySlots.find(slot => slot.weather[0].id < 700) 
-                   || daySlots.find(slot => slot.weather[0].id < 800) 
-                   || daySlots[Math.floor(daySlots.length / 2)];
-
-    return {
-      pop: maxPop,
-      weather: worstSlot.weather,
-      temp: daySlots[Math.floor(daySlots.length / 2)].main.temp // Température moyenne (midi)
-    };
+    const worstSlot = daySlots.find(slot => slot.weather[0].id < 700) || daySlots.find(slot => slot.weather[0].id < 800) || daySlots[Math.floor(daySlots.length / 2)];
+    return { pop: maxPop, weather: worstSlot.weather, temp: daySlots[Math.floor(daySlots.length / 2)].main.temp };
   };
 
   const getWeatherIcon = (code, size=16) => {
@@ -155,7 +141,6 @@ function App() {
     return <Wind size={size} />;
   };
 
-  // --- HELPERS ---
   const getEventStatus = (event) => {
     if (!event.start.dateTime) return { status: 'future', progress: 0 };
     const start = parseISO(event.start.dateTime); const end = parseISO(event.end.dateTime);
@@ -171,119 +156,161 @@ function App() {
   const createEvent = async () => { if(!newTaskTitle)return; try { const [h,m] = newTaskTime.split(':'); const s = new Date(currentDate); s.setHours(parseInt(h),parseInt(m),0); const e = new Date(s.getTime()+newTaskDuration*60000); await gapi.client.calendar.events.insert({calendarId:'primary', resource:{summary:newTaskTitle, start:{dateTime:s.toISOString()}, end:{dateTime:e.toISOString()}}}); setShowAddModal(false); setNewTaskTitle(""); setTimeout(()=>fetchAllEvents(),500); } catch(e){alert("Erreur");} };
 
   const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i));
-
-  // Météo Header : Aujourd'hui (résumé)
   const todaySummary = getDailySummary(new Date());
 
   return (
-    <div className="structured-web-layout">
-      {/* HEADER */}
-      <header className="main-header">
-        <div className="header-left">
-          <div className="date-title">
-            <h1 className="month-title">{format(currentDate, 'MMMM yyyy', { locale: fr })}</h1>
+    <div className="structured-layout">
+      {/* Container Principal : Centre l'app sur Desktop, Plein écran sur Mobile */}
+      <div className="app-container">
+        
+        {/* HEADER FIXE */}
+        <header className="app-header">
+          <div className="header-top">
+            <div className="date-block">
+               {/* Titre mois cliquable pour revenir à aujourd'hui */}
+               <h1 onClick={() => setCurrentDate(new Date())}>{format(currentDate, 'MMMM yyyy', { locale: fr })}</h1>
+               {todaySummary && (
+                 <div className="weather-pill">
+                   {getWeatherIcon(todaySummary.weather[0].id, 14)}
+                   <span>{Math.round(todaySummary.temp)}°</span>
+                 </div>
+               )}
+            </div>
             
-            {/* WIDGET MÉTÉO HEADER */}
-            {todaySummary && (
-              <div className="weather-badge">
-                {getWeatherIcon(todaySummary.weather[0].id)}
-                <span className="weather-temp">{Math.round(todaySummary.temp)}°</span>
+            <div className="header-actions">
+              <div className="cal-filter-wrapper">
+                 <button className="icon-btn" onClick={()=>setShowCalMenu(!showCalMenu)}><Filter size={18}/></button>
+                 {showCalMenu && <div className="dropdown-menu">{calendars.map(c=>(<div key={c.id} className="dropdown-item" onClick={()=>toggleCalendar(c.id)}><div className="dot-check" style={{background:c.backgroundColor}}>{selectedCalendarIds.includes(c.id)&&<Check size={12} color="white"/>}</div><span>{c.summaryOverride||c.summary}</span></div>))}</div>}
               </div>
-            )}
-            
-            <div className="nav-arrows">
-              <button onClick={() => setCurrentDate(subDays(currentDate, 1))}><ChevronLeft size={16}/></button>
-              <button onClick={() => setCurrentDate(addDays(currentDate, 1))}><ChevronRight size={16}/></button>
-              <button onClick={() => setCurrentDate(new Date())} className="today-btn">Auj.</button>
+              <button className="icon-btn"><Settings size={18} /></button>
+              {!isSignedIn && <button onClick={handleLogin} className="login-btn-small">Login</button>}
             </div>
           </div>
-        </div>
-        <div className="header-right">
-          <div className="relative-container">
-            <button className={`view-btn ${showCalMenu?'active':''}`} onClick={()=>setShowCalMenu(!showCalMenu)}><Filter size={14}/> Agendas</button>
-            {showCalMenu && <div className="dropdown-menu">{calendars.map(c=>(<div key={c.id} className="dropdown-item" onClick={()=>toggleCalendar(c.id)}><div className="dot-check" style={{background:c.backgroundColor}}>{selectedCalendarIds.includes(c.id)&&<Check size={12} color="white"/>}</div><span>{c.summaryOverride||c.summary}</span></div>))}</div>}
-          </div>
-          {!isSignedIn && <button onClick={handleLogin} className="login-btn">Connexion</button>}
-        </div>
-      </header>
 
-      {/* DAY STRIP (Avec Risque Pluie Global) */}
-      <div className="day-strip">
-        {weekDays.map((day, i) => {
-          const isSelected = isSameDay(day, currentDate);
-          const isToday = isSameDay(day, new Date());
-          const summary = getDailySummary(day);
-          const rainChance = summary ? Math.round(summary.pop * 100) : 0;
-
-          return (
-            <div key={i} className={`day-cell ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`} onClick={() => setCurrentDate(day)}>
-              <span className="day-name">{format(day, 'EEE', { locale: fr })}</span>
-              <span className="day-num">{format(day, 'd')}</span>
-              
-              {/* INDICATEUR PLUIE */}
-              {summary && (
-                <div className="day-weather-info">
-                   {/* Si risque > 20% sur la journée, on affiche le parapluie */}
-                   {rainChance >= 20 ? (
-                     <div className="rain-indicator" style={{
-                        color: rainChance > 60 ? '#FF3B30' : '#007AFF', // Rouge si fort risque
-                        background: rainChance > 60 ? 'rgba(255, 59, 48, 0.1)' : 'rgba(0, 122, 255, 0.1)'
-                     }}>
-                       <Umbrella size={10} color="currentColor" />
-                       <span>{rainChance}%</span>
-                     </div>
-                   ) : (
-                     <div className="weather-icon-mini">
-                       {getWeatherIcon(summary.weather[0].id, 12)}
-                     </div>
-                   )}
-                </div>
-              )}
+          {/* Navigation Jours (Scrollable) */}
+          <div className="days-strip-scroll">
+            <div className="days-strip">
+              {weekDays.map((day, i) => {
+                const isSelected = isSameDay(day, currentDate);
+                const isToday = isSameDay(day, new Date());
+                const summary = getDailySummary(day);
+                const rainChance = summary ? Math.round(summary.pop * 100) : 0;
+                return (
+                  <div key={i} className={`day-item ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`} onClick={() => setCurrentDate(day)}>
+                    <span className="day-name">{format(day, 'EEE', { locale: fr })}</span>
+                    <span className="day-num">{format(day, 'd')}</span>
+                    {summary && rainChance >= 20 ? (
+                       <div className="day-weather rain" style={{color: rainChance > 50 ? '#FF3B30' : '#007AFF'}}>
+                         <Umbrella size={10} strokeWidth={3} />
+                       </div>
+                    ) : (
+                       summary && <div className="day-weather">{getWeatherIcon(summary.weather[0].id, 10)}</div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          </div>
+        </header>
 
-      {/* TIMELINE */}
-      <div className="timeline-scroll-area" onClick={()=>setShowCalMenu(false)}>
-        <div className="timeline-container">
-          {isSignedIn ? (
-            <>
-              {isLoading && <div className="loading-spinner-container"><div className="spinner"></div></div>}
-              {!isLoading && events.length>0 ? events.map(e => {
+        {/* TIMELINE (SCROLLABLE AREA) */}
+        <main className="timeline-area" onClick={()=>setShowCalMenu(false)}>
+           {isSignedIn ? (
+             <div className="timeline-content">
+               {isLoading && <div className="loader"><div className="spinner"></div></div>}
+               
+               {/* Ligne "MAINTENANT" (si on est aujourd'hui) */}
+               {isSameDay(currentDate, new Date()) && !isLoading && (
+                 <div className="now-indicator-line" style={{ top: '100px' /* Dynamique dans une version avancée */ }}>
+                    {/* Pour l'instant visuel, positionnerait en CSS avancé */}
+                 </div>
+               )}
+
+               {!isLoading && events.length > 0 ? events.map((e, i) => {
                  const isAllDay=!e.start.dateTime; const start=isAllDay?null:parseISO(e.start.dateTime); const end=isAllDay?null:parseISO(e.end.dateTime);
                  const color=e.color||'#34C759'; const checked=completedEvents[e.id];
                  const {status,progress}=isAllDay?{status:'future',progress:0}:getEventStatus(e); const isCur=status==='current';
+                 
+                 // Ref pour le scroll auto
+                 const itemRef = isCur ? nowRef : null;
+
                  return (
-                  <div key={e.id} className={`timeline-row ${checked||status==='past'?'dimmed':''}`}>
-                    <div className="time-col"><span className="time-text">{start?format(start,'HH:mm'):'Jour'}</span>{start&&<span className="time-sub">{format(end,'HH:mm')}</span>}</div>
-                    <div className="visual-col">
-                      <div className="vertical-line"></div>
-                      <div className={`capsule-pill ${isCur?'active-pulse':''}`} style={{background:isCur?`linear-gradient(to bottom, ${color} ${progress}%, #F2F2F7 ${progress}%)`:(status==='past'||checked?'#E5E5EA':'#F2F2F7'), border:`2px solid ${status==='past'?'#E5E5EA':color}`, color:isCur&&progress>50?'white':color}}>
-                        {checked?<Check size={14} color={status==='past'?"#999":color}/>:isCur?<Clock size={14} color="inherit"/>:<div className="bullet-dot" style={{background:color}}></div>}
+                   <div key={e.id} ref={itemRef} className={`timeline-row ${checked||status==='past'?'past':''} ${isCur?'current':''}`}>
+                      <div className="time-column">
+                        <span className="time-start">{start ? format(start, 'HH:mm') : 'Jour'}</span>
+                        <span className="time-end">{end && format(end, 'HH:mm')}</span>
                       </div>
-                    </div>
-                    <div className="card-col">
-                      <div className="structured-card">
-                        <div className="card-content">
-                          <h3 className="event-title" style={{textDecoration:checked?'line-through':'none'}}>{e.summary}</h3>
-                          <span className="event-range">{start&&end?`${differenceInMinutes(end,start)} min`:'Toute la journée'}</span>
+                      
+                      <div className="visual-column">
+                        <div className="line"></div>
+                        <div className="pill" style={{
+                           borderColor: status==='past' ? '#E5E5EA' : color,
+                           background: isCur ? `linear-gradient(to bottom, ${color} ${progress}%, white ${progress}%)` : (status==='past'||checked ? '#F2F2F7' : 'white')
+                        }}>
+                           {checked ? <Check size={12} color="#999"/> : isCur ? <div className="pulse-dot" style={{background:color}}></div> : <div className="static-dot" style={{background:color}}></div>}
                         </div>
-                        <div className="card-actions"><button className="check-btn" onClick={()=>toggleTaskCompletion(e.id)}>{checked?<div className="checked-circle"><Check size={14} color="white"/></div>:<Circle size={24} color="#E5E5EA" strokeWidth={2}/>}</button></div>
                       </div>
-                    </div>
-                  </div>
+
+                      <div className="card-column">
+                        <div className="event-card" onClick={()=>toggleTaskCompletion(e.id)}>
+                          <div className="card-text">
+                            <h3>{e.summary}</h3>
+                            {e.location && <p className="location">📍 {e.location}</p>}
+                          </div>
+                          <div className="check-ring">
+                            {checked ? <div className="check-fill"><Check size={14} color="white"/></div> : <div className="check-outline"></div>}
+                          </div>
+                        </div>
+                      </div>
+                   </div>
                  );
-              }) : (!isLoading && <div className="empty-state"><p>Rien de prévu 🎉</p></div>)}
-            </>
-          ) : <div className="welcome-box"><button onClick={handleLogin} className="primary-btn">Synchroniser Google</button></div>}
-          <div style={{height:'100px'}}></div>
-        </div>
+               }) : (!isLoading && <div className="empty-state"><p>Aucun plan pour aujourd'hui ✨</p></div>)}
+               
+               <div className="spacer-bottom"></div>
+             </div>
+           ) : (
+             <div className="login-screen">
+               <h1>Bienvenue</h1>
+               <p>Connectez votre calendrier pour commencer.</p>
+               <button onClick={handleLogin} className="login-btn-large">Connexion Google</button>
+             </div>
+           )}
+        </main>
+
+        {/* BOUTON FLOTTANT (FAB) */}
+        {isSignedIn && (
+          <button className="fab" onClick={()=>setShowAddModal(true)}>
+            <Plus size={32} color="white" />
+          </button>
+        )}
+
+        {/* MODALE AJOUT (Style iOS Bottom Sheet en Mobile) */}
+        {showAddModal && (
+          <div className="modal-backdrop" onClick={()=>setShowAddModal(false)}>
+            <div className="modal-sheet" onClick={e=>e.stopPropagation()}>
+              <div className="modal-handle"></div>
+              <div className="modal-header">
+                <h2>Nouvelle tâche</h2>
+                <button className="close-icon" onClick={()=>setShowAddModal(false)}><X size={24}/></button>
+              </div>
+              <div className="modal-content">
+                <input autoFocus type="text" placeholder="Titre de la tâche..." className="input-title" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} />
+                <div className="row-inputs">
+                  <div className="input-wrap">
+                    <label>Heure</label>
+                    <input type="time" value={newTaskTime} onChange={e=>setNewTaskTime(e.target.value)} />
+                  </div>
+                  <div className="input-wrap">
+                    <label>Durée (min)</label>
+                    <input type="number" value={newTaskDuration} onChange={e=>setNewTaskDuration(e.target.value)} />
+                  </div>
+                </div>
+                <button className="btn-save" onClick={createEvent}>Ajouter</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-      
-      {/* MODAL & FAB */}
-      {isSignedIn&&<button className="fab-btn" onClick={()=>setShowAddModal(true)}><Plus size={28} color="white"/></button>}
-      {showAddModal && <div className="modal-overlay"><div className="modal-card"><div className="modal-header"><h2>Nouvelle Tâche</h2><button className="close-btn" onClick={()=>setShowAddModal(false)}><X size={20}/></button></div><div className="modal-body"><input className="task-input" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} placeholder="Titre..." autoFocus/><div className="time-inputs"><div className="input-group"><label>Heure</label><input type="time" value={newTaskTime} onChange={e=>setNewTaskTime(e.target.value)}/></div><div className="input-group"><label>Durée</label><input type="number" value={newTaskDuration} onChange={e=>setNewTaskDuration(e.target.value)}/></div></div></div><div className="modal-footer"><button className="save-btn" onClick={createEvent}>Créer</button></div></div></div>}
     </div>
   );
 }
