@@ -19,7 +19,8 @@ const DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/
 function App() {
   const [events, setEvents] = useState([]);
   const [calendars, setCalendars] = useState([]);
-  const [selectedCalendarIds, setSelectedCalendarIds] = useState(['primary']);
+  // On commence vide, on remplira tout au chargement
+  const [selectedCalendarIds, setSelectedCalendarIds] = useState([]); 
   const [completedEvents, setCompletedEvents] = useState({});
   const [forecast, setForecast] = useState([]);
   
@@ -93,7 +94,18 @@ function App() {
   useEffect(() => { if (isSignedIn) fetchAllEvents(); }, [currentDate, selectedCalendarIds, isSignedIn]);
 
   const loadData = async () => await loadCalendars();
-  const loadCalendars = async () => { try { const r = await gapi.client.calendar.calendarList.list(); setCalendars(r.result.items); } catch(e){} };
+  
+  // MODIFICATION : Sélectionner tout par défaut
+  const loadCalendars = async () => { 
+    try { 
+      const r = await gapi.client.calendar.calendarList.list(); 
+      const items = r.result.items;
+      setCalendars(items); 
+      // On prend tous les IDs trouvés et on les active
+      const allIds = items.map(c => c.id);
+      setSelectedCalendarIds(allIds);
+    } catch(e){} 
+  };
 
   const fetchAllEvents = async () => {
     if (selectedCalendarIds.length === 0) { setEvents([]); return; }
@@ -151,8 +163,6 @@ function App() {
 
   return (
     <div className="layout-wrapper">
-      
-      {/* SIDEBAR (Desktop) */}
       <nav className="desktop-sidebar">
         <div className="sidebar-logo">S</div>
         <div className="sidebar-menu">
@@ -160,14 +170,10 @@ function App() {
           <button className={`sidebar-btn ${activeTab==='inbox'?'active':''}`} onClick={()=>setActiveTab('inbox')}><Inbox size={20} /> Inbox</button>
           <button className={`sidebar-btn ${activeTab==='calendar'?'active':''}`} onClick={()=>setActiveTab('calendar')}><CalIcon size={20} /> Calendrier</button>
         </div>
-        <div className="sidebar-bottom">
-          <button className="sidebar-btn"><Settings size={20} /></button>
-        </div>
+        <div className="sidebar-bottom"><button className="sidebar-btn"><Settings size={20} /></button></div>
       </nav>
 
       <div className="app-container">
-        
-        {/* HEADER FIXE */}
         <header className="app-header">
           <div className="header-top">
             <div className="date-block">
@@ -179,9 +185,7 @@ function App() {
                  </div>
                )}
             </div>
-            
             <div className="header-actions">
-               {/* Sur mobile, on cache ces boutons car ils sont ailleurs */}
                <div className="desktop-only-actions">
                   <div className="cal-filter-wrapper">
                      <button className="icon-btn" onClick={()=>setShowCalMenu(!showCalMenu)}><Filter size={18}/></button>
@@ -205,9 +209,7 @@ function App() {
                     <span className="day-name">{format(day, 'EEE', { locale: fr })}</span>
                     <span className="day-num">{format(day, 'd')}</span>
                     {summary && rainChance >= 20 ? (
-                       <div className="day-weather rain" style={{color: rainChance > 50 ? '#FF3B30' : '#007AFF'}}>
-                         <Umbrella size={10} strokeWidth={3} />
-                       </div>
+                       <div className="day-weather rain" style={{color: rainChance > 50 ? '#FF3B30' : '#007AFF'}}><Umbrella size={10} strokeWidth={3} /></div>
                     ) : (
                        summary && <div className="day-weather">{getWeatherIcon(summary.weather[0].id, 10)}</div>
                     )}
@@ -218,111 +220,54 @@ function App() {
           </div>
         </header>
 
-        {/* TIMELINE AREA */}
         <main className="timeline-area" onClick={()=>setShowCalMenu(false)}>
            {isSignedIn ? (
              <div className="timeline-content">
                {isLoading && <div className="loader"><div className="spinner"></div></div>}
-               
-               {isSameDay(currentDate, new Date()) && !isLoading && (
-                 <div className="now-indicator-line" style={{display: 'none'}}></div> 
-               )}
-
+               {isSameDay(currentDate, new Date()) && !isLoading && <div className="now-indicator-line" style={{display: 'none'}}></div>}
                {!isLoading && events.length > 0 ? events.map((e, i) => {
                  const isAllDay=!e.start.dateTime; const start=isAllDay?null:parseISO(e.start.dateTime); const end=isAllDay?null:parseISO(e.end.dateTime);
                  const color=e.color||'#34C759'; const checked=completedEvents[e.id];
                  const {status,progress}=isAllDay?{status:'future',progress:0}:getEventStatus(e); const isCur=status==='current';
                  const itemRef = isCur ? nowRef : null;
-
                  return (
                    <div key={e.id} ref={itemRef} className={`timeline-row ${checked||status==='past'?'past':''} ${isCur?'current':''}`}>
-                      <div className="time-column">
-                        <span className="time-start">{start ? format(start, 'HH:mm') : 'Jour'}</span>
-                        <span className="time-end">{end && format(end, 'HH:mm')}</span>
-                      </div>
-                      
-                      <div className="visual-column">
-                        <div className="line"></div>
-                        <div className="pill" style={{
-                           borderColor: status==='past' ? '#E5E5EA' : color,
-                           background: isCur ? `linear-gradient(to bottom, ${color} ${progress}%, white ${progress}%)` : (status==='past'||checked ? '#F2F2F7' : 'white')
-                        }}>
-                           {checked ? <Check size={12} color="#999"/> : isCur ? <div className="pulse-dot" style={{background:color}}></div> : <div className="static-dot" style={{background:color}}></div>}
-                        </div>
-                      </div>
-
+                      <div className="time-column"><span className="time-start">{start ? format(start, 'HH:mm') : 'Jour'}</span><span className="time-end">{end && format(end, 'HH:mm')}</span></div>
+                      <div className="visual-column"><div className="line"></div><div className="pill" style={{borderColor: status==='past' ? '#E5E5EA' : color, background: isCur ? `linear-gradient(to bottom, ${color} ${progress}%, white ${progress}%)` : (status==='past'||checked ? '#F2F2F7' : 'white')}}>{checked ? <Check size={12} color="#999"/> : isCur ? <div className="pulse-dot" style={{background:color}}></div> : <div className="static-dot" style={{background:color}}></div>}</div></div>
                       <div className="card-column">
                         <div className="event-card" onClick={()=>toggleTaskCompletion(e.id)}>
-                          <div className="card-text">
-                            <h3>{e.summary}</h3>
-                            {e.location && <p className="location">📍 {e.location}</p>}
-                          </div>
-                          <div className="check-ring">
-                            {checked ? <div className="check-fill"><Check size={14} color="white"/></div> : <div className="check-outline"></div>}
-                          </div>
+                          <div className="card-text"><h3>{e.summary}</h3>{e.location && <p className="location">📍 {e.location}</p>}</div>
+                          <div className="check-ring">{checked ? <div className="check-fill"><Check size={14} color="white"/></div> : <div className="check-outline"></div>}</div>
                         </div>
                       </div>
                    </div>
                  );
                }) : (!isLoading && <div className="empty-state"><p>Rien de prévu ✨</p></div>)}
-               
                <div className="spacer-bottom"></div>
              </div>
            ) : (
-             <div className="login-screen">
-               <h1>Bienvenue</h1>
-               <p>Connectez votre calendrier pour commencer.</p>
-               <button onClick={handleLogin} className="login-btn-large">Connexion Google</button>
-             </div>
+             <div className="login-screen"><h1>Bienvenue</h1><p>Connectez votre calendrier.</p><button onClick={handleLogin} className="login-btn-large">Connexion Google</button></div>
            )}
         </main>
 
-        {/* --- NOUVEAU : BARRE DE NAVIGATION DU BAS (MOBILE) --- */}
         {isSignedIn && (
           <nav className="mobile-bottom-nav">
-             <button className={`nav-item ${activeTab==='inbox'?'active':''}`} onClick={()=>setActiveTab('inbox')}>
-                <Inbox size={24} />
-                <span>Inbox</span>
-             </button>
-             
-             <button className={`nav-item ${activeTab==='timeline'?'active':''}`} onClick={()=>setActiveTab('timeline')}>
-                <Layout size={24} />
-                <span>Timeline</span>
-             </button>
-             
-             {/* BOUTON CENTRAL AJOUT */}
-             <div className="nav-add-container">
-               <button className="nav-add-btn" onClick={()=>setShowAddModal(true)}>
-                 <Plus size={28} color="white" />
-               </button>
-             </div>
-
-             <button className={`nav-item ${activeTab==='calendar'?'active':''}`} onClick={()=>setActiveTab('calendar')}>
-                <CalIcon size={24} />
-                <span>Agenda</span>
-             </button>
-
-             <button className="nav-item" onClick={()=>setShowCalMenu(!showCalMenu)}>
-                <Filter size={24} />
-                <span>Filtres</span>
-             </button>
+             <button className={`nav-item ${activeTab==='inbox'?'active':''}`} onClick={()=>setActiveTab('inbox')}><Inbox size={24} /><span>Inbox</span></button>
+             <button className={`nav-item ${activeTab==='timeline'?'active':''}`} onClick={()=>setActiveTab('timeline')}><Layout size={24} /><span>Timeline</span></button>
+             <div className="nav-add-container"><button className="nav-add-btn" onClick={()=>setShowAddModal(true)}><Plus size={28} color="white" /></button></div>
+             <button className={`nav-item ${activeTab==='calendar'?'active':''}`} onClick={()=>setActiveTab('calendar')}><CalIcon size={24} /><span>Agenda</span></button>
+             <button className="nav-item" onClick={()=>setShowCalMenu(!showCalMenu)}><Filter size={24} /><span>Filtres</span></button>
           </nav>
         )}
 
-        {/* --- MODALE CALENDRIERS (AJOUTÉE ICI) --- */}
         {showCalMenu && (
           <div className="modal-backdrop" onClick={()=>setShowCalMenu(false)}>
             <div className="modal-sheet" onClick={e=>e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>Calendriers</h2>
-                <button className="close-icon" onClick={()=>setShowCalMenu(false)}><X size={24}/></button>
-              </div>
+              <div className="modal-header"><h2>Calendriers</h2><button className="close-icon" onClick={()=>setShowCalMenu(false)}><X size={24}/></button></div>
               <div className="cal-list">
                 {calendars.map(c => (
                   <div key={c.id} className="cal-item" onClick={() => toggleCalendar(c.id)}>
-                    <div className="dot-check" style={{background:c.backgroundColor}}>
-                      {selectedCalendarIds.includes(c.id) && <Check size={12} color="white"/>}
-                    </div>
+                    <div className="dot-check" style={{background:c.backgroundColor}}>{selectedCalendarIds.includes(c.id) && <Check size={12} color="white"/>}</div>
                     <span>{c.summary}</span>
                   </div>
                 ))}
@@ -331,17 +276,26 @@ function App() {
           </div>
         )}
 
-        {/* MODALE TÂCHE */}
+        {/* MODALE AJOUT (CORRIGÉE : Pas d'autofocus) */}
         {showAddModal && (
           <div className="modal-backdrop" onClick={()=>setShowAddModal(false)}>
             <div className="modal-sheet" onClick={e=>e.stopPropagation()}>
-              <div className="modal-handle mobile-only"></div>
+              
               <div className="modal-header">
                 <h2>Nouvelle tâche</h2>
-                <button className="close-icon" onClick={()=>setShowAddModal(false)}><X size={24}/></button>
+                <button className="close-icon" onClick={()=>setShowAddModal(false)}><X size={20}/></button>
               </div>
+
               <div className="modal-content">
-                <input autoFocus type="text" placeholder="Titre de la tâche..." className="input-title" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} />
+                {/* J'ai retiré 'autoFocus' ici */}
+                <input 
+                  type="text" 
+                  placeholder="Titre de la tâche..." 
+                  className="input-title" 
+                  value={newTaskTitle} 
+                  onChange={e=>setNewTaskTitle(e.target.value)} 
+                />
+                
                 <div className="row-inputs">
                   <div className="input-wrap">
                     <label>Heure</label>
@@ -352,8 +306,10 @@ function App() {
                     <input type="number" value={newTaskDuration} onChange={e=>setNewTaskDuration(e.target.value)} />
                   </div>
                 </div>
+
                 <button className="btn-save" onClick={createEvent}>Ajouter</button>
               </div>
+
             </div>
           </div>
         )}
