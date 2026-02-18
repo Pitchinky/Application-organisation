@@ -187,6 +187,7 @@ function App() {
       {showAddModal && (
         <AddTaskModal 
           onClose={()=>setShowAddModal(false)}
+          setCurrentDate={setCurrentDate}
           newTaskTitle={newTaskTitle} setNewTaskTitle={setNewTaskTitle}
           newTaskTime={newTaskTime} setNewTaskTime={setNewTaskTime}
           newTaskDuration={newTaskDuration} setNewTaskDuration={setNewTaskDuration}
