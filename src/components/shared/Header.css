@@ -1,0 +1,116 @@
+/* src/components/shared/Header.css */
+.app-header {
+    position: sticky; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    padding-top: env(safe-area-inset-top);
+    border-bottom: 1px solid transparent;
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px 0 20px; }
+  .date-block h1 { margin: 0; font-size: 22px; font-weight: 800; text-transform: capitalize; letter-spacing: -0.5px; }
+  .weather-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--text-muted); margin-top: 4px; }
+  .header-actions { display: flex; gap: 12px;align-items: center; }
+
+  /* Sur PC, on s'assure que le conteneur des filtres et du bouton ajouter sont alignés */
+.desktop-only-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Si tu es sur Desktop, on affiche ces boutons */
+@media (min-width: 768px) {
+  .desktop-only-actions {
+    display: flex;
+  }
+}
+  .icon-btn { background: #F2F2F7; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .desktop-add-btn { background: #000; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  
+  /* Scroll des jours */
+  .days-strip-scroll { overflow-x: auto; scrollbar-width: none; padding: 15px 0 10px 0; }
+  .days-strip-scroll::-webkit-scrollbar { display: none; }
+  .days-strip { display: flex; padding: 0 20px; gap: 12px; }
+  .day-item { 
+    min-width: 50px; height: 70px; background: transparent; border-radius: 16px; 
+    display: flex; flex-direction: column; align-items: center; justify-content: center; 
+    flex-shrink: 0; transition: 0.2s; cursor: pointer; 
+  }
+  .day-item.selected { background: #F2F2F7; color: black; transform: scale(1.05); }
+  .day-item.today .day-num { color: var(--accent); }
+  .day-name { font-size: 11px; font-weight: 600; opacity: 0.5; text-transform: uppercase; }
+  .day-num { font-size: 20px; font-weight: 700; }
+
+  /* Style pour le bouton Login (Header) */
+.login-btn-small {
+  background-color: #F2F2F7;
+  color: #000;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.login-btn-small:hover {
+  background-color: #E5E5EA;
+}
+
+/* Style pour le gros bouton Login (Écran d'accueil) */
+.login-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  text-align: center;
+  padding: 20px;
+}
+
+.login-btn-large {
+  background-color: #000;
+  color: #fff;
+  border: none;
+  padding: 16px 32px;
+  border-radius: 16px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 20px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+}
+
+.login-btn-large:active {
+  transform: scale(0.97);
+}
+
+/* src/components/shared/Header.css */
+
+.day-rain-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.rain-percent {
+  font-size: 9px;
+  font-weight: 700;
+  /* On garde la même couleur que l'icône (hérité) */
+}
+
+.day-weather-small {
+  margin-top: 4px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+/* On ajuste la hauteur des day-items pour qu'ils ne soient pas trop serrés */
+.day-item {
+  min-width: 55px; /* Un peu plus large pour le texte % */
+  height: 85px;    /* Un peu plus haut */
+}

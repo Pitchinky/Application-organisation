@@ -1,0 +1,144 @@
+/* src/components/shared/AddTaskModal.css */
+
+/* Le fond sombre flouté derrière la modale */
+.modal-backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px); /* Pour Safari iPhone */
+    z-index: 20000; /* Très haut pour passer au-dessus de tout */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* La carte blanche (La modale elle-même) */
+  .modal-sheet {
+    background: white;
+    width: 85%;
+    max-width: 320px;
+    border-radius: 28px; /* Arrondis style iOS */
+    padding: 24px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    
+    /* Petite animation d'apparition "Pop" */
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  
+  /* En-tête (Titre + Croix) */
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+  }
+  
+  .modal-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.5px;
+    color: #1C1C1E;
+  }
+  
+  .close-icon {
+    background: #F2F2F7;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8E8E93;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .close-icon:active { background: #E5E5EA; }
+  
+  /* Contenu du formulaire */
+  .modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  /* Input Titre (Souligné) */
+  .input-title {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    font-weight: 600;
+    padding: 8px 0;
+    border-bottom: 2px solid #F2F2F7;
+    outline: none;
+    color: #1C1C1E;
+    margin: 0;
+    border-radius: 0; /* Fix Safari */
+  }
+  .input-title::placeholder { color: #C7C7CC; }
+  .input-title:focus { border-bottom-color: #000; }
+  
+  /* Ligne Heure + Durée */
+  .row-inputs {
+    display: flex;
+    gap: 12px;
+  }
+  
+  .input-wrap {
+    flex: 1;
+    background: #F2F2F7;
+    padding: 10px 14px;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .input-wrap label {
+    font-size: 10px;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #8E8E93;
+    margin-bottom: 2px;
+  }
+  
+  .input-wrap input {
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1C1C1E;
+    padding: 0;
+    width: 100%;
+    outline: none;
+    font-family: inherit;
+  }
+  
+  /* Bouton Ajouter */
+  .btn-save {
+    width: 100%;
+    padding: 16px;
+    background: #000000;
+    color: white;
+    border: none;
+    border-radius: 18px;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.1s;
+  }
+  .btn-save:active {
+    transform: scale(0.96);
+  }

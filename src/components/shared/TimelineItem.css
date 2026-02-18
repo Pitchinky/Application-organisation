@@ -1,0 +1,50 @@
+/* src/components/shared/TimelineItem.css */
+.timeline-row { display: flex; margin-bottom: 0; position: relative; }
+.timeline-row.past { opacity: 0.4; }
+
+/* Colonnes */
+.time-column { 
+  width: 55px; text-align: right; padding-right: 15px; 
+  font-size: 11px; font-weight: 600; color: #C7C7CC; 
+  display: flex; flex-direction: column; justify-content: space-between; 
+  padding-top: 16px; 
+}
+.visual-column { width: 40px; position: relative; display: flex; flex-direction: column; align-items: center; }
+.card-column { 
+  flex: 1; padding: 0; padding-left: 12px;
+  display: flex; align-items: center; 
+}
+
+/* Ligne et Formes */
+.line.full-height {
+  position: absolute; top: 0; bottom: 0; width: 2px; 
+  background: #F2F2F7; z-index: 0;
+}
+.shape.circle {
+  width: 36px; height: 36px; border-radius: 50%; z-index: 1; 
+  display: flex; align-items: center; justify-content: center; margin-top: 8px; color: white;
+}
+.shape.pill-strip {
+  width: 36px; height: calc(100% - 10px); border-radius: 18px; z-index: 1; 
+  display: flex; align-items: flex-start; justify-content: center; margin-top: 8px; padding-top: 10px; color: white;
+}
+
+/* Carte Texte */
+.event-card-transparent {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+}
+.card-text h3 { margin: 0; font-size: 16px; font-weight: 700; color: #1C1C1E; line-height: 1.2; }
+.location { margin: 4px 0 0 0; font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.status-label { display: block; font-size: 10px; color: var(--accent); font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
+.check-circle-outline { width: 20px; height: 20px; border: 2px solid #E5E5EA; border-radius: 50%; margin-left: 10px; }
+.check-circle-outline.checked { background: #E5E5EA; border-color: transparent; }
+
+/* Gaps */
+.timeline-gap { display: flex; align-items: center; position: relative; width: 100%; }
+.gap-line {
+  position: absolute; left: 74px; top: 0; bottom: 0; width: 2px;
+  background-image: linear-gradient(to bottom, #E5E5EA 40%, transparent 40%);
+  background-size: 2px 8px; z-index: 0;
+}
+.gap-label { margin-left: 95px; font-size: 11px; font-weight: 500; color: #C7C7CC; display: flex; align-items: center; gap: 8px; }
+.gap-dots { font-size: 8px; letter-spacing: 2px; }

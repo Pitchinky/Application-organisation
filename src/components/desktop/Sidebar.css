@@ -1,0 +1,20 @@
+/* src/components/desktop/Sidebar.css */
+.desktop-sidebar {
+    width: 240px;
+    background: var(--sidebar-bg);
+    padding: 30px 20px;
+    border-right: 1px solid #E5E5EA;
+    display: flex; flex-direction: column;
+    height: 100%;
+  }
+  .sidebar-logo { font-size: 24px; font-weight: 900; margin-bottom: 40px; padding-left: 10px; }
+  .sidebar-menu { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .sidebar-btn { 
+    display: flex; align-items: center; gap: 12px; padding: 12px; 
+    border-radius: 12px; border: none; background: transparent; 
+    font-size: 15px; font-weight: 600; color: var(--text-muted); 
+    cursor: pointer; transition: 0.2s; 
+  }
+  .sidebar-btn:hover { background: rgba(0,0,0,0.05); color: var(--text-main); }
+  .sidebar-btn.active { background: white; color: black; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+  .sidebar-bottom { padding-top: 20px; border-top: 1px solid #E5E5EA; }
