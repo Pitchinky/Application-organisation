@@ -10,6 +10,7 @@ import DesktopLayout from './layouts/DesktopLayout';
 import TimelineView from './views/TimelineView';
 import InboxView from './views/InboxView';
 import AddTaskModal from './components/shared/AddTaskModal';
+import { getDailySummary } from './utils/weatherLogic';
 
 const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
@@ -137,7 +138,7 @@ function App() {
 
   const toggleCalendar = (id) => setSelectedCalendarIds(p => p.includes(id) ? p.filter(i=>i!==id) : [...p, id]);
 
-  const todaySummary = forecast.length > 0 ? { weather: [{id: 800}], temp: 20 } : null; 
+  const todaySummary = getDailySummary(new Date(), forecast);
 
   // --- RENDU ---
   const renderView = () => {
