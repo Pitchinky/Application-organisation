@@ -11,37 +11,60 @@ export default function TimelineView({
   now, completedEvents, toggleTaskCompletion, isLoading, forecast
 }) {
   
+  // Génère les données de la timeline (incluant les Gaps/Temps libres)
   const timelineData = processTimeline(events, currentDate);
 
   return (
     <>
       <Header 
         forecast={forecast}
-        currentDate={currentDate} setCurrentDate={setCurrentDate}
-        todaySummary={todaySummary} calendars={calendars}
-        showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu}
-        setShowAddModal={setShowAddModal} isSignedIn={isSignedIn}
+        currentDate={currentDate} 
+        setCurrentDate={setCurrentDate}
+        todaySummary={todaySummary} 
+        calendars={calendars}
+        showCalMenu={showCalMenu} 
+        setShowCalMenu={setShowCalMenu}
+        setShowAddModal={setShowAddModal} 
+        isSignedIn={isSignedIn}
         handleLogin={handleLogin}
       />
 
       <div className="timeline-area" onClick={() => setShowCalMenu(false)}>
          {isSignedIn ? (
            <div className="timeline-content">
+             {/* Loader pendant la récupération des données */}
              {isLoading && <div className="loader"><div className="spinner"></div></div>}
-             {!isLoading && timelineData.length > 0 ? timelineData.map((item, i) => (
+             
+             {/* Affichage de la Timeline */}
+             {!isLoading && timelineData.length > 0 ? (
+               timelineData.map((item, i) => (
                 <TimelineItem 
-                  key={i} item={item} now={now} 
+                  key={item.id || `item-${i}`} 
+                  item={item} // L'objet calculé par processTimeline (data + height + type)
+                  now={now} 
                   completedEvents={completedEvents} 
                   toggleTaskCompletion={toggleTaskCompletion} 
                 />
-             )) : (!isLoading && <div className="empty-state"><p>Rien de prévu ✨</p></div>)}
+             ))
+            ) : (
+              !isLoading && (
+                <div className="empty-state">
+                  <p>Rien de prévu ✨</p>
+                </div>
+              )
+            )}
+             
+             {/* Espace pour ne pas que le dernier item soit caché par la nav */}
              <div className="spacer-bottom"></div>
            </div>
          ) : (
+           /* Écran de connexion si non connecté */
            <div className="login-screen">
              <h1>Bienvenue</h1>
-             <p>Connectez votre calendrier.</p>
-             <button onClick={handleLogin} className="login-btn-large">Connexion Google</button>
+             <p>Connectez votre calendrier pour commencer.</p>
+             <button onClick={handleLogin} className="login-btn-large">
+               Connexion Google
+             </button>
            </div>
          )}
       </div>

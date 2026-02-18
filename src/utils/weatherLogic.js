@@ -7,7 +7,7 @@ import { format, isSameDay } from 'date-fns';
  * @param {Array} forecastList - La liste 'list' venant de l'API OpenWeather
  */
 export const getDailySummary = (date, forecastList) => {
-    console.log("Données reçues pour la météo :", forecastList);
+  
     if (!forecastList || forecastList.length === 0) return null;
 
     // 1. On filtre tous les créneaux de 3h qui appartiennent à ce jour
