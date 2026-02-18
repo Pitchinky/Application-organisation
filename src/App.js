@@ -4,9 +4,10 @@ import { gapi } from 'gapi-script';
 import { 
   Settings, Check, Plus, Filter, X, 
   Cloud, Sun, CloudRain, Snowflake, CloudLightning, Wind, Umbrella, 
-  Layout, Calendar as CalIcon, Inbox 
+  Layout, Calendar as CalIcon, Inbox, Clock,
+  Briefcase // Icône générique
 } from 'lucide-react';
-import { format, addDays, isSameDay, startOfWeek, parseISO, differenceInMinutes } from 'date-fns';
+import { format, addDays, isSameDay, startOfWeek, parseISO, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import './App.css';
 
@@ -16,10 +17,12 @@ const WEATHER_KEY = process.env.REACT_APP_WEATHER_API_KEY;
 const SCOPES = "https://www.googleapis.com/auth/calendar.events";
 const DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest";
 
+const PX_PER_MIN = 1.3; 
+const THRESHOLD_SHORT_EVENT = 50; 
+
 function App() {
   const [events, setEvents] = useState([]);
   const [calendars, setCalendars] = useState([]);
-  // On commence vide, on remplira tout au chargement
   const [selectedCalendarIds, setSelectedCalendarIds] = useState([]); 
   const [completedEvents, setCompletedEvents] = useState({});
   const [forecast, setForecast] = useState([]);
@@ -38,7 +41,6 @@ function App() {
   const [tokenClient, setTokenClient] = useState(null);
   const nowRef = useRef(null);
 
-  // --- INIT ---
   useEffect(() => {
     gapi.load("client", async () => {
       await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
@@ -94,18 +96,7 @@ function App() {
   useEffect(() => { if (isSignedIn) fetchAllEvents(); }, [currentDate, selectedCalendarIds, isSignedIn]);
 
   const loadData = async () => await loadCalendars();
-  
-  // MODIFICATION : Sélectionner tout par défaut
-  const loadCalendars = async () => { 
-    try { 
-      const r = await gapi.client.calendar.calendarList.list(); 
-      const items = r.result.items;
-      setCalendars(items); 
-      // On prend tous les IDs trouvés et on les active
-      const allIds = items.map(c => c.id);
-      setSelectedCalendarIds(allIds);
-    } catch(e){} 
-  };
+  const loadCalendars = async () => { try { const r = await gapi.client.calendar.calendarList.list(); const items = r.result.items; setCalendars(items); const allIds = items.map(c => c.id); setSelectedCalendarIds(allIds); } catch(e){} };
 
   const fetchAllEvents = async () => {
     if (selectedCalendarIds.length === 0) { setEvents([]); return; }
@@ -153,6 +144,39 @@ function App() {
     return { status: 'current', progress: Math.min(100, Math.max(0, (elapsed / total) * 100)) };
   };
 
+  const processTimeline = () => {
+    if (!events || events.length === 0) return [];
+    const timelineItems = [];
+    const dayStart = startOfDay(currentDate);
+    const dayEnd = endOfDay(currentDate);
+    let lastTime = dayStart;
+
+    events.forEach((event) => {
+      if (!event.start.dateTime) return;
+      const start = parseISO(event.start.dateTime);
+      const end = parseISO(event.end.dateTime);
+      const gapDuration = differenceInMinutes(start, lastTime);
+      if (gapDuration > 0) {
+        timelineItems.push({ type: 'gap', start: lastTime, end: start, duration: gapDuration, height: gapDuration * PX_PER_MIN });
+      }
+      const eventDuration = differenceInMinutes(end, start);
+      timelineItems.push({ type: 'event', data: event, duration: eventDuration, height: eventDuration * PX_PER_MIN });
+      lastTime = end;
+    });
+
+    const endGap = differenceInMinutes(dayEnd, lastTime);
+    if (endGap > 0) { timelineItems.push({ type: 'gap', start: lastTime, end: dayEnd, duration: endGap, height: endGap * PX_PER_MIN }); }
+    return timelineItems;
+  };
+
+  const formatDuration = (mins) => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h > 0 && m > 0) return `${h}h ${m}min`;
+    if (h > 0) return `${h}h`;
+    return `${m} min`;
+  };
+
   const handleLogin = () => tokenClient?.requestAccessToken();
   const toggleCalendar = (id) => setSelectedCalendarIds(p => p.includes(id) ? p.filter(i=>i!==id) : [...p, id]);
   const toggleTaskCompletion = (id) => { const n = {...completedEvents, [id]:!completedEvents[id]}; setCompletedEvents(n); localStorage.setItem('completed_tasks', JSON.stringify(n)); };
@@ -160,6 +184,7 @@ function App() {
 
   const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i));
   const todaySummary = getDailySummary(new Date());
+  const timelineData = processTimeline();
 
   return (
     <div className="layout-wrapper">
@@ -225,24 +250,104 @@ function App() {
              <div className="timeline-content">
                {isLoading && <div className="loader"><div className="spinner"></div></div>}
                {isSameDay(currentDate, new Date()) && !isLoading && <div className="now-indicator-line" style={{display: 'none'}}></div>}
-               {!isLoading && events.length > 0 ? events.map((e, i) => {
-                 const isAllDay=!e.start.dateTime; const start=isAllDay?null:parseISO(e.start.dateTime); const end=isAllDay?null:parseISO(e.end.dateTime);
-                 const color=e.color||'#34C759'; const checked=completedEvents[e.id];
-                 const {status,progress}=isAllDay?{status:'future',progress:0}:getEventStatus(e); const isCur=status==='current';
-                 const itemRef = isCur ? nowRef : null;
+               
+               {!isLoading && timelineData.length > 0 ? timelineData.map((item, i) => {
+                 
+                 // --- GAPS ---
+                 if (item.type === 'gap') {
+                   const showLabel = item.duration >= 15;
+                   const gapHeight = Math.max(item.height, 20); 
+                   return (
+                     <div key={`gap-${i}`} className="timeline-gap" style={{ height: `${gapHeight}px` }}>
+                       <div className="gap-line"></div>
+                       {showLabel && (
+                         <div className="gap-label"><span className="gap-dots">•••</span><span>{formatDuration(item.duration)} de libre</span></div>
+                       )}
+                     </div>
+                   );
+                 }
+
+                 // --- ÉVÉNEMENTS ---
+                 const e = item.data;
+                 const start = parseISO(e.start.dateTime);
+                 const end = parseISO(e.end.dateTime);
+                 const color = e.color || '#34C759'; 
+                 const checked = completedEvents[e.id];
+                 const {status, progress} = getEventStatus(e); 
+                 const isCur = status === 'current';
+                 const isShort = item.duration <= THRESHOLD_SHORT_EVENT;
+                 const visualHeight = isShort ? 50 : Math.max(item.height, 50);
+
+                 // Calcul du STYLE pour la pilule
+                // Calcul du STYLE pour la pilule
+                let pillStyle = {};
+                 
+                if (status === 'past' || checked) {
+                   // Passé : Gris
+                   pillStyle = { backgroundColor: '#E5E5EA', boxShadow: 'none' };
+                  } else if (isCur && !isShort) {
+                    // TACHE EN COURS (EFFET FONDU)
+                    // On garde la couleur unie jusqu'à un peu avant l'heure actuelle (progress - 15%)
+                    // Et on finit le fondu vers le blanc un peu après (progress + 5%)
+                    const fadeStart = Math.max(0, progress - 15);
+                    const fadeEnd = Math.min(100, progress + 5);
+
+                    pillStyle = { 
+                       background: `linear-gradient(to bottom, 
+                          ${color} 0%, 
+                          ${color} ${fadeStart}%, 
+                          #FFFFFF ${fadeEnd}%
+                       )`,
+                       boxShadow: `0 4px 15px ${color}40`,
+                       border: `2px solid ${color}`
+                    };
+                 } else {
+                   // Futur : Tout blanc avec bordure colorée (ou plein selon tes goûts)
+                   // Si tu veux que le futur soit "vide" en attendant d'arriver :
+                   pillStyle = { 
+                       backgroundColor: '#FFFFFF', // Fond blanc
+                       border: `2px solid ${color}`, // Bordure couleur
+                       boxShadow: `0 4px 10px ${color}20`
+                   };
+                   
+              
+                }
+
                  return (
-                   <div key={e.id} ref={itemRef} className={`timeline-row ${checked||status==='past'?'past':''} ${isCur?'current':''}`}>
-                      <div className="time-column"><span className="time-start">{start ? format(start, 'HH:mm') : 'Jour'}</span><span className="time-end">{end && format(end, 'HH:mm')}</span></div>
-                      <div className="visual-column"><div className="line"></div><div className="pill" style={{borderColor: status==='past' ? '#E5E5EA' : color, background: isCur ? `linear-gradient(to bottom, ${color} ${progress}%, white ${progress}%)` : (status==='past'||checked ? '#F2F2F7' : 'white')}}>{checked ? <Check size={12} color="#999"/> : isCur ? <div className="pulse-dot" style={{background:color}}></div> : <div className="static-dot" style={{background:color}}></div>}</div></div>
+                   <div key={e.id} className={`timeline-row ${checked||status==='past'?'past':''} ${isCur?'current':''}`} style={{ height: `${visualHeight}px`, minHeight: `${visualHeight}px` }}>
+                      
+                      <div className="time-column">
+                        <span className="time-start">{format(start, 'HH:mm')}</span>
+                        {!isShort && <span className="time-end">{format(end, 'HH:mm')}</span>}
+                      </div>
+                      
+                      <div className="visual-column">
+                        <div className="line full-height"></div>
+                        
+                        <div className={`shape ${isShort ? 'circle' : 'pill-strip'}`} style={pillStyle}>
+                           {checked ? <Check size={14} color="white"/> : <Briefcase size={16} color="white" strokeWidth={2.5} />}
+                        </div>
+                      </div>
+                      
                       <div className="card-column">
-                        <div className="event-card" onClick={()=>toggleTaskCompletion(e.id)}>
-                          <div className="card-text"><h3>{e.summary}</h3>{e.location && <p className="location">📍 {e.location}</p>}</div>
-                          <div className="check-ring">{checked ? <div className="check-fill"><Check size={14} color="white"/></div> : <div className="check-outline"></div>}</div>
+                        <div className="event-card-transparent" onClick={()=>toggleTaskCompletion(e.id)}>
+                          <div className="card-text">
+                             {/* Petite info durée restante si en cours */}
+                             {isCur && <span className="status-label">{Math.round(100-progress)}% restant</span>}
+                             
+                             <h3 style={{ textDecoration: checked ? 'line-through' : 'none', color: checked ? '#8E8E93' : '#1C1C1E' }}>
+                               {e.summary}
+                             </h3>
+                             {e.location && !isShort && <p className="location">{e.location}</p>}
+                          </div>
+                          
+                          <div className={`check-circle-outline ${checked ? 'checked' : ''}`} style={{borderColor: checked ? color : '#E5E5EA'}}></div>
                         </div>
                       </div>
                    </div>
                  );
                }) : (!isLoading && <div className="empty-state"><p>Rien de prévu ✨</p></div>)}
+               
                <div className="spacer-bottom"></div>
              </div>
            ) : (
@@ -259,60 +364,10 @@ function App() {
              <button className="nav-item" onClick={()=>setShowCalMenu(!showCalMenu)}><Filter size={24} /><span>Filtres</span></button>
           </nav>
         )}
-
-        {showCalMenu && (
-          <div className="modal-backdrop" onClick={()=>setShowCalMenu(false)}>
-            <div className="modal-sheet" onClick={e=>e.stopPropagation()}>
-              <div className="modal-header"><h2>Calendriers</h2><button className="close-icon" onClick={()=>setShowCalMenu(false)}><X size={24}/></button></div>
-              <div className="cal-list">
-                {calendars.map(c => (
-                  <div key={c.id} className="cal-item" onClick={() => toggleCalendar(c.id)}>
-                    <div className="dot-check" style={{background:c.backgroundColor}}>{selectedCalendarIds.includes(c.id) && <Check size={12} color="white"/>}</div>
-                    <span>{c.summary}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* MODALE AJOUT (CORRIGÉE : Pas d'autofocus) */}
-        {showAddModal && (
-          <div className="modal-backdrop" onClick={()=>setShowAddModal(false)}>
-            <div className="modal-sheet" onClick={e=>e.stopPropagation()}>
-              
-              <div className="modal-header">
-                <h2>Nouvelle tâche</h2>
-                <button className="close-icon" onClick={()=>setShowAddModal(false)}><X size={20}/></button>
-              </div>
-
-              <div className="modal-content">
-                {/* J'ai retiré 'autoFocus' ici */}
-                <input 
-                  type="text" 
-                  placeholder="Titre de la tâche..." 
-                  className="input-title" 
-                  value={newTaskTitle} 
-                  onChange={e=>setNewTaskTitle(e.target.value)} 
-                />
-                
-                <div className="row-inputs">
-                  <div className="input-wrap">
-                    <label>Heure</label>
-                    <input type="time" value={newTaskTime} onChange={e=>setNewTaskTime(e.target.value)} />
-                  </div>
-                  <div className="input-wrap">
-                    <label>Durée (min)</label>
-                    <input type="number" value={newTaskDuration} onChange={e=>setNewTaskDuration(e.target.value)} />
-                  </div>
-                </div>
-
-                <button className="btn-save" onClick={createEvent}>Ajouter</button>
-              </div>
-
-            </div>
-          </div>
-        )}
+        
+        {/* Modals inchangées */}
+        {showCalMenu && <div className="modal-backdrop" onClick={()=>setShowCalMenu(false)}><div className="modal-sheet" onClick={e=>e.stopPropagation()}><div className="modal-header"><h2>Calendriers</h2><button className="close-icon" onClick={()=>setShowCalMenu(false)}><X size={24}/></button></div><div className="cal-list">{calendars.map(c=>(<div key={c.id} className="cal-item" onClick={()=>toggleCalendar(c.id)}><div className="dot-check" style={{background:c.backgroundColor}}>{selectedCalendarIds.includes(c.id)&&<Check size={12} color="white"/>}</div><span>{c.summary}</span></div>))}</div></div></div>}
+        {showAddModal && <div className="modal-backdrop" onClick={()=>setShowAddModal(false)}><div className="modal-sheet" onClick={e=>e.stopPropagation()}><div className="modal-header"><h2>Nouvelle tâche</h2><button className="close-icon" onClick={()=>setShowAddModal(false)}><X size={20}/></button></div><div className="modal-content"><input type="text" placeholder="Titre..." className="input-title" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} /><div className="row-inputs"><div className="input-wrap"><label>Heure</label><input type="time" value={newTaskTime} onChange={e=>setNewTaskTime(e.target.value)} /></div><div className="input-wrap"><label>Durée (min)</label><input type="number" value={newTaskDuration} onChange={e=>setNewTaskDuration(e.target.value)} /></div></div><button className="btn-save" onClick={createEvent}>Ajouter</button></div></div></div>}
       </div>
     </div>
   );
