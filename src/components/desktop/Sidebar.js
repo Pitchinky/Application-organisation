@@ -17,6 +17,11 @@ export default function Sidebar({ activeTab, setActiveTab }) {
         <button className={`sidebar-btn ${activeTab==='shopping'?'active':''}`} onClick={()=>setActiveTab('shopping')}>
            <CalIcon size={20} /> Courses
         </button>
+
+        <button className={`sidebar-btn ${activeTab==='settings'?'active':''}`} onClick={()=>setActiveTab('settings')}>
+           <Settings size={20} /> Réglages
+        </button>
+        
       </div>
       <div className="sidebar-bottom">
         <button className="sidebar-btn"><Settings size={20} /></button>

@@ -39,9 +39,7 @@ export default function Header({
         </div>
         <div className="header-actions">
            <div className="desktop-only-actions">
-              <div className="cal-filter-wrapper">
-                 <button className="icon-btn" onClick={()=>setShowCalMenu(!showCalMenu)}><Filter size={18}/></button>
-              </div>
+              
               <button className="desktop-add-btn" onClick={()=>setShowAddModal(true)}><Plus size={16} /> Ajouter</button>
            </div>
            {!isSignedIn && <button onClick={handleLogin} className="login-btn-small">Login</button>}

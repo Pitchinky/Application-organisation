@@ -19,9 +19,10 @@ export default function BottomNav({ activeTab, setActiveTab, onAddClick, onFilte
        <button className={`nav-item ${activeTab==='shopping'?'active':''}`} onClick={()=>setActiveTab('shopping')}>
          <CalIcon size={24} /><span>Courses</span>
        </button>
-       <button className="nav-item" onClick={onFilterClick}>
-         <Filter size={24} /><span>Filtres</span>
-       </button>
+       <button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={()=>setActiveTab('settings')}>
+          <Settings size={24} />
+          <span>Réglages</span>
+        </button>
     </nav>
   );
 }

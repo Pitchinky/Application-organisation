@@ -7,8 +7,11 @@ import './App.css';
 // IMPORTS ARCHITECTURE
 import MobileLayout from './layouts/MobileLayout';
 import DesktopLayout from './layouts/DesktopLayout';
+
 import TimelineView from './views/TimelineView';
 import InboxView from './views/InboxView';
+import SettingsView from './views/SettingsView'
+
 import AddTaskModal from './components/shared/AddTaskModal';
 import { getDailySummary } from './utils/weatherLogic';
 
@@ -154,6 +157,14 @@ function App() {
             showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu} setShowAddModal={setShowAddModal}
           />
         );
+      case 'settings': 
+        return (
+          <SettingsView 
+            calendars={calendars} 
+            selectedCalendarIds={selectedCalendarIds}
+            toggleCalendar={toggleCalendar}
+            handleLogout={() => { localStorage.clear(); window.location.reload(); }}
+          />);
       case 'inbox': return <InboxView />;
       case 'shopping': return <div><h1>Courses</h1></div>;
       default: return null;

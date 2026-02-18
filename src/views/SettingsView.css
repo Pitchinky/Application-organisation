@@ -1,0 +1,80 @@
+/* src/views/SettingsView.css */
+.settings-container {
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .settings-header h1 {
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 30px;
+  }
+  
+  .settings-section {
+    margin-bottom: 35px;
+  }
+  
+  .section-title {
+    font-size: 14px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 12px;
+    padding-left: 5px;
+  }
+  
+  .section-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 15px;
+    padding-left: 5px;
+  }
+  
+  .cal-list-settings {
+    background: #F2F2F7;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  
+  .cal-item-settings {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 14px 16px;
+    background: white;
+    border-bottom: 1px solid #F2F2F7;
+    cursor: pointer;
+  }
+  
+  .cal-item-settings:last-child { border-bottom: none; }
+  
+  .cal-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .cal-name {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  
+  .logout-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px;
+    background: #FFE5E5;
+    color: #FF3B30;
+    border: none;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+  }
