@@ -36,23 +36,15 @@ export default function TimelineView({
              {isLoading && <div className="loader"><div className="spinner"></div></div>}
              
              {/* Affichage de la Timeline */}
-             {!isLoading && timelineData.length > 0 ? (
-               timelineData.map((item, i) => (
-                <TimelineItem 
-                  key={item.id || `item-${i}`} 
-                  item={item} // L'objet calculé par processTimeline (data + height + type)
-                  now={now} 
-                  completedEvents={completedEvents} 
-                  toggleTaskCompletion={toggleTaskCompletion} 
-                />
-             ))
-            ) : (
-              !isLoading && (
-                <div className="empty-state">
-                  <p>Rien de prévu ✨</p>
-                </div>
-              )
-            )}
+             {!isLoading && timelineData.length > 0 ? timelineData.map((item, i) => (
+              <TimelineItem 
+                key={item.id || i} 
+                item={item} // On passe l'objet item qui contient .data
+                now={now} 
+                completedEvents={completedEvents} 
+                toggleTaskCompletion={toggleTaskCompletion} 
+              />
+            )) : (!isLoading && <div className="empty-state"><p>Rien de prévu ✨</p></div>)}
              
              {/* Espace pour ne pas que le dernier item soit caché par la nav */}
              <div className="spacer-bottom"></div>

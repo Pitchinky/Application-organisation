@@ -34,21 +34,27 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
   const isShort = item.duration <= THRESHOLD_SHORT_EVENT;
   const visualHeight = isShort ? 50 : Math.max(item.height, 50);
 
+  // --- LOGIQUE DE STYLE AVEC GRADIENT DYNAMIQUE ---
   let pillStyle = {};
   let iconColor = "white";
 
   if (isPast) {
+    // PASSÉ OU COCHÉ : Couleur pleine, icône blanche
     pillStyle = { backgroundColor: catColor };
     iconColor = "white";
   } else if (isCur && !isShort) {
+    // EN COURS : Gradient basé sur la progression (progress)
     const fadeStart = Math.max(0, progress - 10);
     const fadeEnd = Math.min(100, progress + 10);
     pillStyle = { 
        background: `linear-gradient(to bottom, ${catColor} 0%, ${catColor} ${fadeStart}%, #F2F2F7 ${fadeEnd}%)`,
-       border: `1px solid ${catColor}40`
+       border: `1px solid ${catColor}40`,
+       boxShadow: `0 4px 12px ${catColor}30`
     };
-    iconColor = progress > 50 ? catColor : "white";
+    // L'icône est blanche car l'événement a commencé
+    iconColor = "white"; 
   } else {
+    // FUTUR : Fond gris, icône couleur
     pillStyle = { backgroundColor: '#F2F2F7', border: '1px solid #E5E5EA' };
     iconColor = catColor;
   }
@@ -64,25 +70,25 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
        
        <div className="visual-column">
          <div className="line full-height"></div>
-         {/* L'icône est maintenant centrée dans la pill-strip */}
          <div 
             className={`shape ${isShort ? 'circle' : 'pill-strip'}`} 
             style={pillStyle}
             onClick={() => toggleTaskCompletion(e.id)}
          >
             <div className="icon-centered">
-               {checked ? (
-                 <Icon icon="ph:check-bold" color="white" width="14" />
-               ) : (
-                 <Icon icon={icon} color={iconColor} width={isShort ? "18" : "22"} />
-               )}
+               <Icon icon={icon} color={iconColor} width={isShort ? "18" : "22"} />
             </div>
          </div>
        </div>
        
-       <div className="card-column" onClick={() => toggleTaskCompletion(e.id)}>
-         <div className="event-card-transparent">
+       <div className="card-column">
+         <div className="event-card-transparent" onClick={() => toggleTaskCompletion(e.id)}>
            <div className="card-text">
+              {isCur && !checked && (
+                <span className="status-label" style={{color: catColor}}>
+                   {Math.round(100 - progress)}% restant
+                </span>
+              )}
               <h3 style={{ 
                 textDecoration: checked ? 'line-through' : 'none', 
                 color: checked ? '#8E8E93' : '#1C1C1E' 
@@ -92,9 +98,11 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
               {e.location && !isShort && <p className="location">{e.location}</p>}
            </div>
            
-           {/* CERCLE DE VALIDATION PLUS VISIBLE */}
            <div className={`check-circle-large ${checked ? 'checked' : ''}`} 
-                style={{ borderColor: checked ? catColor : '#D1D1D6' }}>
+                style={{ 
+                  backgroundColor: checked ? catColor : 'transparent',
+                  borderColor: checked ? catColor : '#D1D1D6' 
+                }}>
              {checked && <Icon icon="ph:check-bold" color="white" width="14" />}
            </div>
          </div>
