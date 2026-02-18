@@ -1,5 +1,5 @@
 import React from 'react';
-import { Inbox, Layout, Calendar as CalIcon, Filter, Plus } from 'lucide-react';
+import { Inbox, Layout, Calendar as CalIcon, Settings, Plus } from 'lucide-react';
 import './BottomNav.css';
 
 export default function BottomNav({ activeTab, setActiveTab, onAddClick, onFilterClick }) {
