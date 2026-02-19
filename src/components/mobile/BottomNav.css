@@ -5,11 +5,6 @@
   left: 0; 
   right: 0; 
   
-  /* --- LES 3 LIGNES QUI CORRIGENT TOUT --- */
-  box-sizing: content-box;
-  height: 65px; /* Hauteur fixe, SANS LE CALC */
-  padding-bottom: env(safe-area-inset-bottom); /* Ajoute juste l'espace de la barre iPhone */
-  
   background: rgba(255, 255, 255, 0.95); 
   backdrop-filter: blur(20px); 
   -webkit-backdrop-filter: blur(20px);
@@ -17,7 +12,14 @@
   
   display: flex; 
   justify-content: space-around; 
-  align-items: center; 
+  
+  /* 1. On aligne en haut, pas au centre */
+  align-items: flex-start; 
+  
+  /* 2. LA MAGIE : Plus de 'height'. C'est le padding qui fait la taille ! */
+  padding-top: 15px; 
+  padding-bottom: calc(15px + env(safe-area-inset-bottom)); 
+  
   z-index: 9999;
 }
 
@@ -33,14 +35,16 @@
   font-size: 10px; 
   font-weight: 600; 
   width: 60px;
-  margin: 0; /* J'ai retiré le margin négatif ici */
+  margin: 0; 
+  padding: 0;
 }
 
 .nav-item.active { color: black; }
 
 .nav-add-container { 
   position: relative; 
-  top: -20px; 
+  /* On remonte un peu plus le bouton + pour compenser le padding */
+  top: -30px; 
 }
 
 .nav-add-btn { 
@@ -55,7 +59,6 @@
   justify-content: center; 
   box-shadow: 0 8px 20px rgba(0,0,0,0.20); 
   cursor: pointer; 
-  transition: transform 0.1s; 
 }
 
 .nav-add-btn:active { transform: scale(0.95); }
