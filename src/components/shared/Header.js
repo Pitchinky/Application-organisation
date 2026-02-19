@@ -1,19 +1,25 @@
 import React from 'react';
-import { format, isSameDay, addDays, startOfWeek } from 'date-fns';
+import { format, isSameDay, addDays, startOfWeek, addWeeks, subWeeks } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Filter, Plus, CloudLightning, CloudRain, Snowflake, Sun, Cloud, Wind } from 'lucide-react';
+import { 
+  Plus, CloudLightning, CloudRain, Snowflake, 
+  Sun, Cloud, Wind, Umbrella, ChevronLeft, ChevronRight 
+} from 'lucide-react';
 import './Header.css';
 
 import { getDailySummary } from '../../utils/weatherLogic';
-import { Umbrella } from 'lucide-react';
 
 export default function Header({ 
   currentDate, setCurrentDate, todaySummary, 
-  showCalMenu, setShowCalMenu, setShowAddModal, 
-  handleLogin, isSignedIn, forecast, ...props
+  setShowAddModal, handleLogin, isSignedIn, forecast 
 }) {
   
-  const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i));
+  const weekDays = Array.from({ length: 7 }).map((_, i) => 
+    addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i)
+  );
+
+  const nextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
+  const prevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
 
   const getWeatherIcon = (code, size=16) => {
     if (!code) return <Sun size={size} />;
@@ -29,7 +35,14 @@ export default function Header({
     <header className="app-header">
       <div className="header-top">
         <div className="date-block">
-           <h1 onClick={() => setCurrentDate(new Date())}>{format(currentDate, 'MMMM yyyy', { locale: fr })}</h1>
+           <div className="month-selector">
+              <button className="nav-arrow" onClick={prevWeek}><ChevronLeft size={20} /></button>
+              <h1 onClick={() => setCurrentDate(new Date())}>
+                {format(currentDate, 'MMMM yyyy', { locale: fr })}
+              </h1>
+              <button className="nav-arrow" onClick={nextWeek}><ChevronRight size={20} /></button>
+           </div>
+           
            {todaySummary && (
              <div className="weather-pill">
                {getWeatherIcon(todaySummary.weather[0].id, 14)}
@@ -37,6 +50,7 @@ export default function Header({
              </div>
            )}
         </div>
+        
         <div className="header-actions">
            <div className="desktop-only-actions">
               
@@ -46,34 +60,29 @@ export default function Header({
         </div>
       </div>
 
-      <div className="days-strip-scroll">
-        <div className="days-strip">
+      <div className="days-wrapper">
+        <div className="days-grid">
         {weekDays.map((day, i) => {
           const isSelected = isSameDay(day, currentDate);
           const isToday = isSameDay(day, new Date());
-          
-          // APPEL DE LA FONCTION UTILS
           const daySummary = getDailySummary(day, forecast);
           const rainChance = daySummary ? Math.round(daySummary.pop * 100) : 0;
 
-          let rainColor = "#8E8E93"; // Gris par défaut
-          if (rainChance > 70) rainColor = "#FF3B30"; // Rouge
-          else if (rainChance > 30) rainColor = "#FF9500"; // Orange
-          else if (rainChance > 10) rainColor = "#007AFF"; // Bleu
-
           return (
-            <div key={i} className={`day-item ${isSelected ? 'selected' : ''}`} onClick={() => setCurrentDate(day)}>
-              <span className="day-name">{format(day, 'EEE', { locale: fr })}</span>
-              <span className="day-num">{format(day, 'd')}</span>
+            <div key={i} className={`day-card ${isSelected ? 'selected' : ''} ${isToday ? 'is-today' : ''}`} onClick={() => setCurrentDate(day)}>
+              <span className="day-label">{format(day, 'EEE', { locale: fr }).replace('.', '')}</span>
+              <span className="day-number">{format(day, 'd')}</span>
               
-              {daySummary && rainChance >= 20 ? (
-                <div className="day-rain-indicator" style={{ color: rainColor }}>
-                  <Umbrella size={12} strokeWidth={2.5} />
-                  <span className="rain-percent">{rainChance}%</span>
-                </div>
-              ) : (
-                daySummary && <div className="day-weather-small">{getWeatherIcon(daySummary.weather[0].id, 12)}</div>
-              )}
+              <div className="day-meta">
+                {daySummary && rainChance >= 20 ? (
+                  <div className="rain-info" style={{ color: rainChance > 50 ? "#FF3B30" : "#007AFF" }}>
+                    <Umbrella size={10} strokeWidth={3} />
+                    <span>{rainChance}%</span>
+                  </div>
+                ) : (
+                  daySummary && <div className="weather-small">{getWeatherIcon(daySummary.weather[0].id, 12)}</div>
+                )}
+              </div>
             </div>
           );
         })}
