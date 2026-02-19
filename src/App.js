@@ -18,6 +18,7 @@ import { getDailySummary } from './utils/weatherLogic';
 
 import { db } from './firebaseConfig';
 import { doc, setDoc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { requestForToken, onMessageListener } from './firebaseConfig';
 
 const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
@@ -68,6 +69,8 @@ function App() {
         loadData();
       }
     });
+
+    
     
     const initClient = () => {
       if (window.google && window.google.accounts) {
@@ -101,7 +104,85 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    // 1. Demander le token et l'ENREGISTRER
+    requestForToken().then(async (token) => {
+      if (token) {
+        // On sauvegarde le token dans Firestore pour pouvoir envoyer des messages après
+        // "mon_profil" est un ID arbitraire ici, tu pourras le rendre dynamique plus tard
+        try {
+          await setDoc(doc(db, "users", "mon_profil"), {
+            fcmToken: token,
+            lastActive: new Date()
+          }, { merge: true });
+          console.log("Token sauvegardé en base !");
+        } catch (error) {
+          console.error("Erreur sauvegarde token :", error);
+        }
+      }
+    });
+  
+    // 2. Écouter les notifications "In-App"
+    onMessageListener().then(payload => {
+      console.log("Notification reçue en direct :", payload);
+      // Au lieu d'une alerte moche, on peut juste log ou faire un petit toast
+      alert(`${payload.notification.title}: ${payload.notification.body}`);
+    }).catch(err => console.log('failed: ', err));
+  }, []);
+
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      const now = new Date();
+      
+      // On boucle sur tes événements de la timeline
+      events.forEach(event => {
+        if (event.start && event.start.dateTime) {
+          const eventDate = new Date(event.start.dateTime);
+          const diffInMinutes = Math.floor((eventDate - now) / 60000);
+  
+          // Si l'événement commence dans pile 10 minutes
+          if (diffInMinutes === 10) {
+            new Notification("⏰ Prochain événement", {
+              body: `"${event.summary}" commence dans 10 minutes !`,
+              icon: "/logo192.png",
+              silent: false
+            });
+          }
+        }
+      });
+    }, 60000); // On vérifie toutes les minutes
+  
+    return () => clearInterval(checkInterval);
+  }, [events]); // On relance si la liste d'événements change
+
   useEffect(() => { if (isSignedIn) fetchAllEvents(); }, [currentDate, selectedCalendarIds, isSignedIn]);
+
+  useEffect(() => {
+    const morningSummary = setInterval(() => {
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+  
+      // On cible 08h00 du matin
+      if (hours === 7 && minutes === 0) {
+        
+        // On filtre les événements "All Day" (ceux qui n'ont pas de dateTime)
+        const allDayTasks = events.filter(e => !e.start.dateTime);
+        
+        if (allDayTasks.length > 0) {
+          const taskCount = allDayTasks.length;
+          const taskList = allDayTasks.map(t => t.summary).join(', ');
+  
+          new Notification("☀️ Bonjour !", {
+            body: `Tu as ${taskCount} objectifs aujourd'hui : ${taskList}`,
+            icon: "/logo192.png"
+          });
+        }
+      }
+    }, 60000); // Vérifie chaque minute
+  
+    return () => clearInterval(morningSummary);
+  }, [events]);
 
   // --- LOGIQUE API ---
   const loadData = async () => await loadCalendars();
