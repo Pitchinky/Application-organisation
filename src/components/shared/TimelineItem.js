@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Icon } from '@iconify/react';
 import { getCategoryData } from '../../utils/categoryLogic';
 import { getEventStatus, THRESHOLD_SHORT_EVENT, formatDuration } from '../../utils/timelineLogic';
 import './TimelineItem.css';
+import { MoreHorizontal, Trash2, Edit2 } from 'lucide-react';
 
-export default function TimelineItem({ item, now, completedEvents, toggleTaskCompletion, onToggleSubtask }) {
+export default function TimelineItem({ item, now, completedEvents, toggleTaskCompletion, onToggleSubtask, onDeleteEvent, onEditEvent }) {
+
+  const [showMenu, setShowMenu] = useState(false);
   
   if (item.type === 'gap') {
     const showLabel = item.duration >= 15;
@@ -23,6 +26,7 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
     );
   }
 
+  
   const e = item.data;
   if (!e || !e.summary) return null;
 
@@ -61,9 +65,17 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
     iconColor = catColor;
   }
 
+  const toggleMenu = (event) => {
+    event.stopPropagation();
+    setShowMenu(!showMenu);
+  };
+
+  
+
   return (
     <div className={`timeline-row ${isPast ? 'past' : ''} ${isCur ? 'current' : ''}`} 
-         style={{ minHeight: `${visualHeight}px`, height: 'auto', paddingBottom: hasSubtasks ? '15px' : '0' }}>
+         style={{ minHeight: `${visualHeight}px`, height: 'auto', paddingBottom: hasSubtasks ? '15px' : '0', zIndex: showMenu ? 100 : 1 }}
+         >
        
        <div className="time-column">
          <span className="time-start">{format(start, 'HH:mm')}</span>
@@ -83,27 +95,19 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
          </div>
        </div>
        
-       <div className="card-column">
+        <div className="card-column">
          <div className="event-card-transparent">
-           <div className="card-text" onClick={() => toggleTaskCompletion(e.id)}>
-              {isCur && !checked && (
-                <span className="status-label" style={{color: catColor}}>
-                   {Math.round(100 - progress)}% restant
-                </span>
-              )}
-              <h3 style={{ 
-                textDecoration: checked ? 'line-through' : 'none', 
-                color: checked ? '#8E8E93' : '#1C1C1E' 
-              }}>
-                {e.summary}
-              </h3>
-              
-              {e.location && !isShort && <p className="location">{e.location}</p>}
 
-              {/* SECTION SOUS-TÂCHES */}
-              {hasSubtasks && !isShort && (
-                <div className="task-subtasks-list">
-                  {e.subtasks.map((sub, idx) => (
+          <div className="card-text" onClick={() => toggleTaskCompletion(e.id)}>
+            {isCur && !checked && (
+              <span className="status-label" style={{color: catColor}}>{Math.round(100 - progress)}% restant</span>
+            )}
+            <h3>{e.summary}</h3>
+            {e.location && !isShort && <p className="location">{e.location}</p>}
+
+            {hasSubtasks && !isShort && (
+              <div className="task-subtasks-list">
+                {e.subtasks.map((sub, idx) => (
                     <div 
                       key={sub.id || idx} 
                       className="subtask-item"
@@ -121,20 +125,54 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
                       </span>
                     </div>
                   ))}
-                </div>
+              </div>
+            )}
+          </div>
+             
+            
+          <div className="card-actions-right">
+            <div className="options-container">
+              <button className="options-trigger" onClick={toggleMenu}>
+                <MoreHorizontal size={20} color="#8E8E93" />
+              </button>
+
+              {showMenu && (
+                <>
+                  {/* Ce calque invisible ferme le menu au clic n'importe où ailleurs */}
+                  <div className="menu-backdrop" onClick={() => setShowMenu(false)} />
+                  
+                  <div className="options-menu">
+                    <button className="menu-item" onClick={(ev) => { ev.stopPropagation(); onEditEvent(e); setShowMenu(false); }}>
+                      <Edit2 size={14} /> <span>Modifier</span>
+                    </button>
+                    <button className="menu-item delete" onClick={(ev) => { ev.stopPropagation(); onDeleteEvent(e.id); setShowMenu(false); }}>
+                      <Trash2 size={14} /> <span>Supprimer</span>
+                    </button>
+                  </div>
+                </>
               )}
-           </div>
+            </div>
+
+            <div 
+              className={`check-circle-large ${checked ? 'checked' : ''}`} 
+              onClick={() => toggleTaskCompletion(e.id)}
+              style={{ 
+                backgroundColor: checked ? catColor : 'transparent',
+                borderColor: checked ? catColor : '#D1D1D6' 
+              }}>
+              {checked && <Icon icon="ph:check-bold" color="white" width="14" />}
+            </div>
+          </div>
+              
+              
+
+  
            
-           <div className={`check-circle-large ${checked ? 'checked' : ''}`} 
-                onClick={() => toggleTaskCompletion(e.id)}
-                style={{ 
-                  backgroundColor: checked ? catColor : 'transparent',
-                  borderColor: checked ? catColor : '#D1D1D6' 
-                }}>
-             {checked && <Icon icon="ph:check-bold" color="white" width="14" />}
-           </div>
+           
+           
          </div>
-       </div>
+        </div>
+
     </div>
   );
 }

@@ -10,7 +10,7 @@ export default function AddTaskModal({
   onClose, onAdd, currentDate, setCurrentDate,
   newTaskTitle, setNewTaskTitle, 
   newTaskTime, setNewTaskTime, 
-  newTaskDuration, setNewTaskDuration 
+  newTaskDuration, setNewTaskDuration, editingEvent
 }) {
   
   const [localDate, setLocalDate] = useState(currentDate || new Date());
@@ -21,6 +21,14 @@ export default function AddTaskModal({
   useEffect(() => {
     if (currentDate) setLocalDate(currentDate);
   }, [currentDate]);
+
+  useEffect(() => {
+    if (editingEvent && editingEvent.subtasks) {
+      setSubtasks(editingEvent.subtasks);
+    } else {
+      setSubtasks([]);
+    }
+  }, [editingEvent]);
 
   const { icon, color } = getCategoryData(newTaskTitle);
 
@@ -168,7 +176,7 @@ export default function AddTaskModal({
             })}
             disabled={!newTaskTitle} 
             style={{ backgroundColor: newTaskTitle ? color : '#F2F2F7', color: newTaskTitle ? 'white' : '#C7C7CC' }}>
-            Ajouter la tâche
+            {editingEvent ? "Enregistrer les modifications" : "Ajouter la tâche"}
           </button>
         </div>
       </div>

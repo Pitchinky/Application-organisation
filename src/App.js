@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { gapi } from 'gapi-script';
 import { Check, X } from 'lucide-react';
 import './App.css';
+import { format } from 'date-fns';
 
 // IMPORTS ARCHITECTURE
 import MobileLayout from './layouts/MobileLayout';
@@ -16,7 +17,7 @@ import AddTaskModal from './components/shared/AddTaskModal';
 import { getDailySummary } from './utils/weatherLogic';
 
 import { db } from './firebaseConfig';
-import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
 const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
@@ -44,6 +45,9 @@ function App() {
   const [newTaskTime, setNewTaskTime] = useState("12:00");
   const [newTaskDuration, setNewTaskDuration] = useState(60);
   const [tokenClient, setTokenClient] = useState(null);
+
+
+
 
   // --- EFFETS ---
   useEffect(() => {
@@ -160,70 +164,118 @@ function App() {
     setCompletedEvents(n); localStorage.setItem('completed_tasks', JSON.stringify(n)); 
   };
 
-  // Dans App.js
-const handleToggleSubtask = async (googleEventId, currentSubtasks, subtaskId) => {
-  try {
-    // 1. On crée le nouveau tableau avec la tâche inversée
-    const updatedSubtasks = currentSubtasks.map(sub => 
-      sub.id === subtaskId ? { ...sub, completed: !sub.completed } : sub
-    );
+  
+  const handleToggleSubtask = async (googleEventId, currentSubtasks, subtaskId) => {
+    try {
+      // 1. On crée le nouveau tableau avec la tâche inversée
+      const updatedSubtasks = currentSubtasks.map(sub => 
+        sub.id === subtaskId ? { ...sub, completed: !sub.completed } : sub
+      );
 
-    // 2. Mise à jour dans Firebase
-    const docRef = doc(db, "task_details", googleEventId);
-    await updateDoc(docRef, {
-      subtasks: updatedSubtasks
-    });
+      // 2. Mise à jour dans Firebase
+      const docRef = doc(db, "task_details", googleEventId);
+      await updateDoc(docRef, {
+        subtasks: updatedSubtasks
+      });
 
-    // 3. Mise à jour locale de l'état pour un rendu instantané sans recharger
-    setEvents(prevEvents => prevEvents.map(event => 
-      event.id === googleEventId ? { ...event, subtasks: updatedSubtasks } : event
-    ));
-    
-  } catch (error) {
-    console.error("Erreur lors de la mise à jour de la sous-tâche:", error);
-  }
-};
-
-  const createEvent = async (taskData) => { 
-    // taskData contient maintenant l'objet complet venant du Modal ({title, subtasks, etc.})
-    if(!taskData.title) return; 
-
-    try { 
-      // 1. Préparation des dates pour Google
-      const [h, m] = newTaskTime.split(':'); 
-      const start = new Date(currentDate); 
-      start.setHours(parseInt(h), parseInt(m), 0); 
-      const end = new Date(start.getTime() + newTaskDuration * 60000); 
-
-      // 2. Insertion dans Google Calendar
-      const response = await gapi.client.calendar.events.insert({
-        calendarId: 'primary', 
-        resource: {
-          summary: taskData.title, 
-          start: { dateTime: start.toISOString() }, 
-          end: { dateTime: end.toISOString() }
-        }
-      }); 
-
-      const googleEventId = response.result.id;
-
-      // 3. Insertion des sous-tâches dans Firebase Firestore
-      if (taskData.subtasks && taskData.subtasks.length > 0) {
-        await setDoc(doc(db, "task_details", googleEventId), {
-          subtasks: taskData.subtasks,
-          createdAt: new Date().toISOString()
-        });
-      }
-
-      // 4. Nettoyage de l'interface
-      setShowAddModal(false); 
-      setNewTaskTitle(""); 
-      setTimeout(fetchAllEvents, 500); 
+      // 3. Mise à jour locale de l'état pour un rendu instantané sans recharger
+      setEvents(prevEvents => prevEvents.map(event => 
+        event.id === googleEventId ? { ...event, subtasks: updatedSubtasks } : event
+      ));
       
-    } catch(e) { 
-      console.error("Erreur complète:", e);
-      alert("Erreur lors de la création de la tâche"); 
-    } 
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour de la sous-tâche:", error);
+    }
+  };
+
+  const createEvent = async (taskData) => {
+    if (!taskData.title) return;
+  
+    try {
+      const [h, m] = newTaskTime.split(':');
+      const start = new Date(currentDate);
+      start.setHours(parseInt(h), parseInt(m), 0);
+      const end = new Date(start.getTime() + newTaskDuration * 60000);
+  
+      const resource = {
+        summary: taskData.title,
+        start: { dateTime: start.toISOString() },
+        end: { dateTime: end.toISOString() }
+      };
+  
+      let googleId;
+  
+      if (editingEvent) {
+        // MODE ÉDITION : On met à jour l'existant
+        const response = await gapi.client.calendar.events.patch({
+          calendarId: 'primary',
+          eventId: editingEvent.id,
+          resource: resource
+        });
+        googleId = editingEvent.id;
+      } else {
+        // MODE CRÉATION : On insère un nouveau
+        const response = await gapi.client.calendar.events.insert({
+          calendarId: 'primary',
+          resource: resource
+        });
+        googleId = response.result.id;
+      }
+  
+      // Mise à jour de Firebase (écrase ou crée les subtasks)
+      await setDoc(doc(db, "task_details", googleId), {
+        subtasks: taskData.subtasks,
+        updatedAt: new Date().toISOString()
+      });
+  
+      closeAddModal(); // Utilise la nouvelle fonction de fermeture
+      setTimeout(fetchAllEvents, 500);
+    } catch (e) {
+      console.error(e);
+      alert("Erreur lors de la sauvegarde");
+    }
+  };
+
+  // SUPPRIMER UNE TÂCHE
+  const handleDeleteEvent = async (eventId) => {
+    if (!window.confirm("Supprimer cette tâche ?")) return;
+
+    try {
+      // 1. Supprimer sur Google Calendar
+      await gapi.client.calendar.events.delete({
+        calendarId: 'primary',
+        eventId: eventId,
+      });
+
+      // 2. Supprimer les sous-tâches sur Firebase
+      await deleteDoc(doc(db, "task_details", eventId));
+
+      // 3. Rafraîchir l'interface
+      fetchAllEvents();
+    } catch (error) {
+      console.error("Erreur suppression:", error);
+    }
+  };
+
+  // MODIFIER UNE TÂCHE (Simplifié : on ouvre le modal avec les infos)
+  const [editingEvent, setEditingEvent] = useState(null);
+
+  // Fonction pour ouvrir le modal en mode édition
+  const handleEditEvent = (event) => {
+    setEditingEvent(event);
+    setNewTaskTitle(event.summary);
+    // On extrait l'heure du format ISO de Google
+    const startTime = new Date(event.start.dateTime);
+    setNewTaskTime(format(startTime, 'HH:mm'));
+    setShowAddModal(true);
+  };
+
+  // Modifie aussi ton bouton "Fermer" ou "Ajouter" pour réinitialiser
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setEditingEvent(null);
+    setNewTaskTitle("");
+    setNewTaskTime("12:00");
   };
 
   const toggleCalendar = (id) => setSelectedCalendarIds(p => p.includes(id) ? p.filter(i=>i!==id) : [...p, id]);
@@ -242,7 +294,7 @@ const handleToggleSubtask = async (googleEventId, currentSubtasks, subtaskId) =>
             isSignedIn={isSignedIn} handleLogin={()=>tokenClient?.requestAccessToken()}
             isLoading={isLoading} todaySummary={todaySummary} calendars={calendars}
             showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu} setShowAddModal={setShowAddModal}
-            onToggleSubtask={handleToggleSubtask}
+            onToggleSubtask={handleToggleSubtask} onDeleteEvent={handleDeleteEvent} onEditEvent={handleEditEvent}
           />
         );
       case 'settings': 
@@ -281,6 +333,7 @@ const handleToggleSubtask = async (googleEventId, currentSubtasks, subtaskId) =>
         newTaskTime={newTaskTime} setNewTaskTime={setNewTaskTime}
         newTaskDuration={newTaskDuration} setNewTaskDuration={setNewTaskDuration}
         onAdd={(data) => createEvent(data)} 
+        editingEvent={editingEvent}
       />
       )}
 

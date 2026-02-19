@@ -1,15 +1,39 @@
 /* src/components/shared/TimelineItem.css */
 
+/* --- L'élément parent doit avoir un z-index quand le menu est ouvert --- */
 .timeline-row {
   display: flex;
   margin-bottom: 0;
   position: relative;
   transition: opacity 0.3s ease;
+  /* On s'assure que la ligne ne bloque pas les éléments qui dépassent */
+  z-index: 1; 
+}
+
+/* Force la ligne à passer devant les autres UNIQUEMENT quand on la survole */
+.timeline-row:hover {
+  z-index: 10;
 }
 
 /* Style quand la tâche est passée ou cochée */
+/* On ne met plus d'opacity sur .timeline-row.past directement */
 .timeline-row.past {
-  opacity: 0.7; /* Un peu moins opaque pour garder la lisibilité */
+  opacity: 1; /* On force l'opacité pleine sur la ligne */
+}
+
+/* On applique la transparence SEULEMENT sur le contenu visuel et texte */
+.timeline-row.past .time-column,
+.timeline-row.past .visual-column,
+.timeline-row.past .card-text,
+.timeline-row.past .check-circle-large {
+  opacity: 0.5; /* C'est ici qu'on gère le look "passé" */
+  transition: opacity 0.3s ease;
+}
+
+.timeline-row.past .options-menu {
+  opacity: 1 !important;
+  backdrop-filter: none; /* On retire le flou pour éviter les bugs de transparence */
+  background: white;     /* Fond blanc solide */
 }
 
 /* --- COLONNES --- */
@@ -23,7 +47,7 @@
   color: #C7C7CC; 
   display: flex; 
   flex-direction: column; 
-  justify-content: flex-start; /* Aligné sur le début de la ligne */
+  justify-content: flex-start;
   padding-top: 16px; 
 }
 
@@ -46,8 +70,9 @@
   flex: 1; 
   padding: 0; 
   padding-left: 12px;
-  display: flex; 
-  align-items: center; 
+  display: flex;
+  /* On laisse déborder le menu */
+  overflow: visible; 
 }
 
 /* --- LIGNE VERTICALE --- */
@@ -66,8 +91,8 @@
 .shape {
   z-index: 1;
   display: flex;
-  align-items: center; /* Centrage vertical de l'icône */
-  justify-content: center; /* Centrage horizontal de l'icône */
+  align-items: center;
+  justify-content: center;
   color: white;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -85,7 +110,6 @@
   height: calc(100% - 10px); 
   border-radius: 20px; 
   margin-top: 5px;
-  /* L'icône sera centrée grâce au flex du parent .shape */
 }
 
 .icon-centered {
@@ -100,23 +124,127 @@
   width: 100%; 
   display: flex; 
   justify-content: space-between; 
-  align-items: center; 
-  cursor: pointer;
-  padding: 10px 0;
+  align-items: flex-start;
+  padding: 12px 0;
+  position: relative;
 }
 
 .card-text {
   flex: 1;
 }
 
-.card-text h3 { 
+.card-text h3 {
+  margin: 0;
+  line-height: 26px; /* Doit faire la taille de tes icônes pour l'alignement */
+}
+
+/* --- NOUVELLE BARRE DE TITRE ALIGNÉE --- */
+
+.title-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Aligne les points sur le centre vertical de la ligne */
+  gap: 8px;
+  width: 100%;
+  min-height: 24px; /* Force une hauteur minimum pour la ligne de titre */
+}
+
+.title-bar h3 { 
+  flex: 1;
   margin: 0; 
   font-size: 16px; 
   font-weight: 700; 
   color: #1C1C1E; 
-  line-height: 1.2; 
+  line-height: 24px; /* Doit être identique à min-height de title-bar */
   transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
 }
+
+.options-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px; /* Identique au line-height du texte */
+}
+
+.options-trigger {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  transition: background 0.2s;
+}
+
+.options-trigger:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Ajustement du menu pour qu'il soit bien sous les points */
+/* On ne met plus d'opacity sur .timeline-row.past directement */
+.timeline-row.past {
+  opacity: 1; /* On force l'opacité pleine sur la ligne */
+}
+
+/* On applique la transparence SEULEMENT sur le contenu visuel et texte */
+.timeline-row.past .time-column,
+.timeline-row.past .visual-column,
+.timeline-row.past .card-text,
+.timeline-row.past .check-circle-large {
+  opacity: 0.5; /* C'est ici qu'on gère le look "passé" */
+  transition: opacity 0.3s ease;
+}
+
+/* Le menu reste à 100% car il n'est pas dans la liste ci-dessus */
+.options-menu {
+  position: absolute;
+  right: 0;
+  top: 30px;
+  background: #ffffff !important; /* Blanc pur */
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  z-index: 9999;
+  min-width: 150px;
+  overflow: hidden;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: none;
+  background: white; /* Fond solide pour chaque item */
+  font-size: 14px;
+  cursor: pointer;
+  color: #1C1C1E;
+}
+
+.menu-item:hover {
+  background: #F2F2F7;
+}
+
+.menu-item.delete {
+  color: #FF3B30;
+  border-top: 1px solid #F2F2F7;
+}
+
+/* --- AUTRES ÉLÉMENTS DE LA CARTE --- */
 
 .location { 
   margin: 4px 0 0 0; 
@@ -134,7 +262,6 @@
   letter-spacing: 0.5px;
 }
 
-/* Le bouton rond à droite (Plus visible) */
 .check-circle-large { 
   width: 26px; 
   height: 26px; 
@@ -145,7 +272,8 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0; /* Évite que le rond s'écrase */
+  flex-shrink: 0;
+  z-index: 1;
 }
 
 .check-circle-large.checked { 
@@ -153,7 +281,43 @@
   transform: scale(1.05);
 }
 
-/* --- GAPS (ESPACES LIBRES) --- */
+/* --- SOUS-TÂCHES --- */
+
+.task-subtasks-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.subtask-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid #C7C7CC;
+  flex-shrink: 0;
+}
+
+.subtask-item span {
+  font-size: 12.5px;
+  color: #1C1C1E;
+  font-weight: 500;
+}
+
+.subtask-item span.sub-done {
+  text-decoration: line-through;
+  color: #8E8E93;
+  opacity: 0.6;
+}
+
+/* --- GAPS --- */
 
 .timeline-gap { 
   display: flex; 
@@ -164,7 +328,7 @@
 
 .gap-line {
   position: absolute; 
-  left: 21px; /* Aligné sur la ligne visual-column */
+  left: 21px; 
   top: 0; 
   bottom: 0; 
   width: 2px;
@@ -183,53 +347,55 @@
   gap: 10px; 
 }
 
-.gap-dots { 
-  font-size: 10px; 
-  letter-spacing: 1px; 
-  color: #D1D1D6;
-}
-
-/* TimelineItem.css */
-.task-subtasks-list {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.subtask-item {
+/* NOUVELLE COLONNE D'ACTIONS */
+.card-actions-right {
   display: flex;
   align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.subtask-item:hover {
-  opacity: 0.7;
-}
-
-.subtask-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: 1.5px solid #C7C7CC;
+  gap: 12px;
+  margin-left: 15px;
+  height: 26px;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  position: relative; /* Nécessaire pour le z-index du menu */
 }
 
-.subtask-dot.done {
-  /* La couleur de fond est gérée en inline JS par catColor */
+.options-container {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-.subtask-item span {
-  font-size: 12px;
-  color: #1C1C1E;
-  font-weight: 500;
+.options-trigger {
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  width: 26px;
+  height: 26px;
 }
 
-.subtask-item span.sub-done {
-  text-decoration: line-through;
-  color: #8E8E93;
-  opacity: 0.6;
+/* Placé à la fin de ton fichier CSS */
+
+.menu-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: transparent;
+  z-index: 9998; /* Juste en dessous du menu (9999) */
+  cursor: default;
+}
+
+.options-menu {
+  /* ... tes styles actuels ... */
+  z-index: 9999; /* Toujours au-dessus du backdrop */
+}
+
+/* Optionnel : Assure-toi que le z-index de la ligne n'empêche pas le backdrop de fonctionner */
+.timeline-row {
+  /* ... tes styles actuels ... */
+  z-index: auto; 
 }
