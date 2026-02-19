@@ -5,7 +5,7 @@ import { getCategoryData } from '../../utils/categoryLogic';
 import { getEventStatus, THRESHOLD_SHORT_EVENT, formatDuration } from '../../utils/timelineLogic';
 import './TimelineItem.css';
 
-export default function TimelineItem({ item, now, completedEvents, toggleTaskCompletion }) {
+export default function TimelineItem({ item, now, completedEvents, toggleTaskCompletion, onToggleSubtask }) {
   
   if (item.type === 'gap') {
     const showLabel = item.duration >= 15;
@@ -14,7 +14,10 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
       <div className="timeline-gap" style={{ height: `${gapHeight}px` }}>
         <div className="gap-line"></div>
         {showLabel && (
-          <div className="gap-label"><span className="gap-dots">•••</span><span>{formatDuration(item.duration)} de libre</span></div>
+          <div className="gap-label">
+            <span className="gap-dots">•••</span>
+            <span>{formatDuration(item.duration)} de libre</span>
+          </div>
         )}
       </div>
     );
@@ -32,18 +35,19 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
   const isCur = status === 'current';
   const isPast = status === 'past' || checked;
   const isShort = item.duration <= THRESHOLD_SHORT_EVENT;
-  const visualHeight = isShort ? 50 : Math.max(item.height, 50);
+  
+  // Ajustement de la hauteur visuelle si présence de sous-tâches
+  const hasSubtasks = e.subtasks && e.subtasks.length > 0;
+  const visualHeight = isShort ? 50 : Math.max(item.height, hasSubtasks ? 80 : 50);
 
-  // --- LOGIQUE DE STYLE AVEC GRADIENT DYNAMIQUE ---
+  // --- LOGIQUE DE STYLE ---
   let pillStyle = {};
   let iconColor = "white";
 
   if (isPast) {
-    // PASSÉ OU COCHÉ : Couleur pleine, icône blanche
     pillStyle = { backgroundColor: catColor };
     iconColor = "white";
   } else if (isCur && !isShort) {
-    // EN COURS : Gradient basé sur la progression (progress)
     const fadeStart = Math.max(0, progress - 10);
     const fadeEnd = Math.min(100, progress + 10);
     pillStyle = { 
@@ -51,17 +55,15 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
        border: `1px solid ${catColor}40`,
        boxShadow: `0 4px 12px ${catColor}30`
     };
-    // L'icône est blanche car l'événement a commencé
     iconColor = "white"; 
   } else {
-    // FUTUR : Fond gris, icône couleur
     pillStyle = { backgroundColor: '#F2F2F7', border: '1px solid #E5E5EA' };
     iconColor = catColor;
   }
 
   return (
     <div className={`timeline-row ${isPast ? 'past' : ''} ${isCur ? 'current' : ''}`} 
-         style={{ height: `${visualHeight}px`, minHeight: `${visualHeight}px` }}>
+         style={{ minHeight: `${visualHeight}px`, height: 'auto', paddingBottom: hasSubtasks ? '15px' : '0' }}>
        
        <div className="time-column">
          <span className="time-start">{format(start, 'HH:mm')}</span>
@@ -82,8 +84,8 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
        </div>
        
        <div className="card-column">
-         <div className="event-card-transparent" onClick={() => toggleTaskCompletion(e.id)}>
-           <div className="card-text">
+         <div className="event-card-transparent">
+           <div className="card-text" onClick={() => toggleTaskCompletion(e.id)}>
               {isCur && !checked && (
                 <span className="status-label" style={{color: catColor}}>
                    {Math.round(100 - progress)}% restant
@@ -95,10 +97,36 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
               }}>
                 {e.summary}
               </h3>
+              
               {e.location && !isShort && <p className="location">{e.location}</p>}
+
+              {/* SECTION SOUS-TÂCHES */}
+              {hasSubtasks && !isShort && (
+                <div className="task-subtasks-list">
+                  {e.subtasks.map((sub, idx) => (
+                    <div 
+                      key={sub.id || idx} 
+                      className="subtask-item"
+                      onClick={(event) => {
+                        event.stopPropagation(); // Empêche de cocher la tâche parente
+                        onToggleSubtask(e.id, e.subtasks, sub.id);
+                      }}
+                    >
+                      <div 
+                        className={`subtask-dot ${sub.completed ? 'done' : ''}`} 
+                        style={{ borderColor: sub.completed ? catColor : '#C7C7CC', backgroundColor: sub.completed ? catColor : 'transparent' }}
+                      />
+                      <span className={sub.completed ? 'sub-done' : ''}>
+                        {sub.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
            </div>
            
            <div className={`check-circle-large ${checked ? 'checked' : ''}`} 
+                onClick={() => toggleTaskCompletion(e.id)}
                 style={{ 
                   backgroundColor: checked ? catColor : 'transparent',
                   borderColor: checked ? catColor : '#D1D1D6' 

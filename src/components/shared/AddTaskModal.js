@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Plus, Sun } from 'lucide-react';
+import { X, Calendar, Clock, Plus, Sun, Trash2 } from 'lucide-react';
 import { format, addMinutes, isValid, parse } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getCategoryData } from '../../utils/categoryLogic';
@@ -41,6 +41,17 @@ export default function AddTaskModal({
     } catch (e) { return '--:--'; }
   };
 
+  const handleAddSubtask = () => {
+    if (tempSubtask.trim()) {
+      setSubtasks([...subtasks, { id: Date.now(), text: tempSubtask, completed: false }]);
+      setTempSubtask('');
+    }
+  };
+
+  const removeSubtask = (id) => {
+    setSubtasks(subtasks.filter(st => st.id !== id));
+  };
+
   const handleDateChange = (e) => {
     const selected = new Date(e.target.value);
     if (isValid(selected)) {
@@ -57,7 +68,6 @@ export default function AddTaskModal({
           <div className="header-date-center">
             {isValid(localDate) ? format(localDate, 'eeee d MMMM yyyy', { locale: fr }) : ''}
           </div>
-
           <div className="floating-pill-icon">
             <Icon icon={icon} color="white" width="22" />
           </div>
@@ -122,17 +132,40 @@ export default function AddTaskModal({
             </div>
           )}
 
+          {/* SECTION VISUELLE DES SOUS-TÂCHES AJOUTÉES */}
           <div className="subtasks-mini-section">
+            {subtasks.length > 0 && (
+              <div className="subtasks-added-list">
+                {subtasks.map(st => (
+                  <div key={st.id} className="subtask-added-item">
+                    <span>{st.text}</span>
+                    <Trash2 size={12} color="#FF3B30" onClick={() => removeSubtask(st.id)} style={{cursor: 'pointer'}} />
+                  </div>
+                ))}
+              </div>
+            )}
+            
             <div className="sub-input-wrap">
-              <input type="text" placeholder="Ajouter une étape..." value={tempSubtask}
+              <input 
+                type="text" 
+                placeholder="Ajouter une étape..." 
+                value={tempSubtask}
                 onChange={e => setTempSubtask(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (tempSubtask.trim() && setSubtasks([...subtasks, {id: Date.now(), text: tempSubtask}]) || setTempSubtask(''))} />
-              <Plus size={16} color={color} onClick={() => {if(tempSubtask.trim()){setSubtasks([...subtasks, {id: Date.now(), text: tempSubtask}]); setTempSubtask('');}}} style={{cursor:'pointer'}} />
+                onKeyDown={e => e.key === 'Enter' && handleAddSubtask()} 
+              />
+              <Plus size={16} color={color} onClick={handleAddSubtask} style={{cursor:'pointer'}} />
             </div>
           </div>
 
           <button className="mini-btn-save" 
-            onClick={() => onAdd({title: newTaskTitle, allDay: isAllDay, subtasks, date: localDate})}
+            onClick={() => onAdd({
+              title: newTaskTitle, 
+              allDay: isAllDay, 
+              subtasks: subtasks, 
+              date: localDate,
+              time: newTaskTime,
+              duration: newTaskDuration
+            })}
             disabled={!newTaskTitle} 
             style={{ backgroundColor: newTaskTitle ? color : '#F2F2F7', color: newTaskTitle ? 'white' : '#C7C7CC' }}>
             Ajouter la tâche

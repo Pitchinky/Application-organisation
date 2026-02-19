@@ -8,7 +8,7 @@ import './TimelineView.css';
 export default function TimelineView({ 
   events, currentDate, setCurrentDate, todaySummary, calendars, 
   showCalMenu, setShowCalMenu, setShowAddModal, handleLogin, isSignedIn,
-  now, completedEvents, toggleTaskCompletion, isLoading, forecast
+  now, completedEvents, toggleTaskCompletion, isLoading, forecast, onToggleSubtask
 }) {
   
   // Génère les données de la timeline (incluant les Gaps/Temps libres)
@@ -42,6 +42,7 @@ export default function TimelineView({
                 item={item} // On passe l'objet item qui contient .data
                 now={now} 
                 completedEvents={completedEvents} 
+                onToggleSubtask={onToggleSubtask}
                 toggleTaskCompletion={toggleTaskCompletion} 
               />
             )) : (!isLoading && <div className="empty-state"><p>Rien de prévu ✨</p></div>)}

@@ -15,6 +15,9 @@ import SettingsView from './views/SettingsView'
 import AddTaskModal from './components/shared/AddTaskModal';
 import { getDailySummary } from './utils/weatherLogic';
 
+import { db } from './firebaseConfig';
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+
 const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
 const WEATHER_KEY = process.env.REACT_APP_WEATHER_API_KEY;
@@ -108,19 +111,48 @@ function App() {
 
   const fetchAllEvents = async () => {
     if (selectedCalendarIds.length === 0) { setEvents([]); return; }
-    setEvents([]); setIsLoading(true);
+    setIsLoading(true);
     try {
       const start = new Date(currentDate); start.setHours(0,0,0,0);
       const end = new Date(currentDate); end.setHours(23,59,59,999);
+      
       const promises = selectedCalendarIds.map(async (calId) => {
-        const r = await gapi.client.calendar.events.list({ 'calendarId': calId, 'timeMin': start.toISOString(), 'timeMax': end.toISOString(), 'singleEvents': true, 'orderBy': 'startTime' });
+        const r = await gapi.client.calendar.events.list({ 
+          'calendarId': calId, 
+          'timeMin': start.toISOString(), 
+          'timeMax': end.toISOString(), 
+          'singleEvents': true, 
+          'orderBy': 'startTime' 
+        });
         const cal = calendars.find(c => c.id === calId);
-        return r.result.items.map(e => ({ ...e, color: cal?.backgroundColor, calId: calId }));
+        
+        // POUR CHAQUE ÉVÉNEMENT GOOGLE, ON TENTE DE RÉCUPÉRER LES SUBTASKS
+        const eventsWithFirebase = await Promise.all(r.result.items.map(async (event) => {
+          const docRef = doc(db, "task_details", event.id);
+          const docSnap = await getDoc(docRef);
+          
+          return { 
+            ...event, 
+            color: cal?.backgroundColor, 
+            calId: calId,
+            // On ajoute les subtasks si elles existent dans Firebase
+            subtasks: docSnap.exists() ? docSnap.data().subtasks : []
+          };
+        }));
+        
+        return eventsWithFirebase;
       });
+  
       const res = await Promise.all(promises);
-      const unique = new Map(); res.flat().forEach(e => unique.set(e.id, e));
-      setEvents(Array.from(unique.values()).sort((a,b) => new Date(a.start.dateTime) - new Date(b.start.dateTime)));
-    } catch(e) { if(e.status===401) { setIsSignedIn(false); localStorage.clear(); } } finally { setIsLoading(false); }
+      const flatEvents = res.flat().sort((a,b) => new Date(a.start.dateTime) - new Date(b.start.dateTime));
+      setEvents(flatEvents);
+      
+    } catch(e) { 
+      if(e.status===401) { setIsSignedIn(false); localStorage.clear(); } 
+      console.error("Erreur fetch:", e);
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   const toggleTaskCompletion = (id) => { 
@@ -128,15 +160,70 @@ function App() {
     setCompletedEvents(n); localStorage.setItem('completed_tasks', JSON.stringify(n)); 
   };
 
-  const createEvent = async () => { 
-    if(!newTaskTitle) return; 
+  // Dans App.js
+const handleToggleSubtask = async (googleEventId, currentSubtasks, subtaskId) => {
+  try {
+    // 1. On crée le nouveau tableau avec la tâche inversée
+    const updatedSubtasks = currentSubtasks.map(sub => 
+      sub.id === subtaskId ? { ...sub, completed: !sub.completed } : sub
+    );
+
+    // 2. Mise à jour dans Firebase
+    const docRef = doc(db, "task_details", googleEventId);
+    await updateDoc(docRef, {
+      subtasks: updatedSubtasks
+    });
+
+    // 3. Mise à jour locale de l'état pour un rendu instantané sans recharger
+    setEvents(prevEvents => prevEvents.map(event => 
+      event.id === googleEventId ? { ...event, subtasks: updatedSubtasks } : event
+    ));
+    
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour de la sous-tâche:", error);
+  }
+};
+
+  const createEvent = async (taskData) => { 
+    // taskData contient maintenant l'objet complet venant du Modal ({title, subtasks, etc.})
+    if(!taskData.title) return; 
+
     try { 
-      const [h,m] = newTaskTime.split(':'); 
-      const s = new Date(currentDate); s.setHours(parseInt(h),parseInt(m),0); 
-      const e = new Date(s.getTime()+newTaskDuration*60000); 
-      await gapi.client.calendar.events.insert({calendarId:'primary', resource:{summary:newTaskTitle, start:{dateTime:s.toISOString()}, end:{dateTime:e.toISOString()}}}); 
-      setShowAddModal(false); setNewTaskTitle(""); setTimeout(fetchAllEvents, 500); 
-    } catch(e){ alert("Erreur création"); } 
+      // 1. Préparation des dates pour Google
+      const [h, m] = newTaskTime.split(':'); 
+      const start = new Date(currentDate); 
+      start.setHours(parseInt(h), parseInt(m), 0); 
+      const end = new Date(start.getTime() + newTaskDuration * 60000); 
+
+      // 2. Insertion dans Google Calendar
+      const response = await gapi.client.calendar.events.insert({
+        calendarId: 'primary', 
+        resource: {
+          summary: taskData.title, 
+          start: { dateTime: start.toISOString() }, 
+          end: { dateTime: end.toISOString() }
+        }
+      }); 
+
+      const googleEventId = response.result.id;
+
+      // 3. Insertion des sous-tâches dans Firebase Firestore
+      if (taskData.subtasks && taskData.subtasks.length > 0) {
+        await setDoc(doc(db, "task_details", googleEventId), {
+          subtasks: taskData.subtasks,
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      // 4. Nettoyage de l'interface
+      setShowAddModal(false); 
+      setNewTaskTitle(""); 
+      setTimeout(fetchAllEvents, 500); 
+      
+    } catch(e) { 
+      console.error("Erreur complète:", e);
+      alert("Erreur lors de la création de la tâche"); 
+    } 
   };
 
   const toggleCalendar = (id) => setSelectedCalendarIds(p => p.includes(id) ? p.filter(i=>i!==id) : [...p, id]);
@@ -155,6 +242,7 @@ function App() {
             isSignedIn={isSignedIn} handleLogin={()=>tokenClient?.requestAccessToken()}
             isLoading={isLoading} todaySummary={todaySummary} calendars={calendars}
             showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu} setShowAddModal={setShowAddModal}
+            onToggleSubtask={handleToggleSubtask}
           />
         );
       case 'settings': 
@@ -186,13 +274,14 @@ function App() {
       {/* Modales globales */}
       {showAddModal && (
         <AddTaskModal 
-          onClose={()=>setShowAddModal(false)}
-          setCurrentDate={setCurrentDate}
-          newTaskTitle={newTaskTitle} setNewTaskTitle={setNewTaskTitle}
-          newTaskTime={newTaskTime} setNewTaskTime={setNewTaskTime}
-          newTaskDuration={newTaskDuration} setNewTaskDuration={setNewTaskDuration}
-          onAdd={createEvent}
-        />
+        onClose={() => setShowAddModal(false)}
+        currentDate={currentDate} 
+        setCurrentDate={setCurrentDate}
+        newTaskTitle={newTaskTitle} setNewTaskTitle={setNewTaskTitle}
+        newTaskTime={newTaskTime} setNewTaskTime={setNewTaskTime}
+        newTaskDuration={newTaskDuration} setNewTaskDuration={setNewTaskDuration}
+        onAdd={(data) => createEvent(data)} 
+      />
       )}
 
       {showCalMenu && (
