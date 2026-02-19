@@ -1,13 +1,11 @@
 /* src/components/mobile/BottomNav.css */
 .mobile-bottom-nav {
-  /* Changement majeur : FIXED au lieu de absolute */
   position: fixed; 
   bottom: 0; 
   left: 0; 
   right: 0; 
   
-  /* On ajuste la hauteur pour qu'elle soit naturelle */
-  height: calc(65px + env(safe-area-inset-bottom));
+  /* On SUPPRIME la ligne "height: calc(...)" */
   
   background: rgba(255, 255, 255, 0.95); 
   backdrop-filter: blur(20px); 
@@ -16,12 +14,11 @@
   
   display: flex; 
   justify-content: space-around; 
-  /* Aligner au centre plutôt qu'en haut pour éviter le décalage */
   align-items: center; 
   
-  /* On gère l'espace de la barre iPhone proprement */
-  padding-bottom: env(safe-area-inset-bottom); 
-  padding-top: 0; 
+  /* C'est le padding qui va définir la hauteur parfaite */
+  padding-top: 10px; 
+  padding-bottom: calc(10px + env(safe-area-inset-bottom)); 
   z-index: 9999;
 }
 
@@ -37,16 +34,15 @@
   font-size: 10px; 
   font-weight: 600; 
   width: 60px;
-  /* Pour compenser le padding-bottom du parent et centrer l'icône */
-  margin-top: -5px; 
+  margin: 0; /* On enlève le margin négatif qui écrasait le texte */
 }
 
 .nav-item.active { color: black; }
 
 .nav-add-container { 
   position: relative; 
-  /* On réduit un peu le décalage vers le haut */
-  top: -15px; 
+  /* Fait dépasser le gros bouton noir proprement */
+  top: -20px; 
 }
 
 .nav-add-btn { 
@@ -59,9 +55,8 @@
   display: flex; 
   align-items: center; 
   justify-content: center; 
-  box-shadow: 0 8px 20px rgba(0,0,0,0.20); 
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25); 
   cursor: pointer; 
-  transition: transform 0.1s; 
 }
 
 .nav-add-btn:active { transform: scale(0.95); }

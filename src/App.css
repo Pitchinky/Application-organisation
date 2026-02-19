@@ -53,12 +53,13 @@ body {
   flex-direction: column; 
 }
 
+/* Dans App.css */
 .mobile-content-container { 
   flex: 1; 
   overflow-y: auto; 
   -webkit-overflow-scrolling: touch; 
-  /* Correction du padding bas pour inclure la zone de sécurité et la nav bar */
-  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + 20px); 
+  /* Force un grand espace vide en bas pour pouvoir scroller au-dessus du gros bouton + */
+  padding-bottom: 120px; 
   position: relative; 
 }
 
