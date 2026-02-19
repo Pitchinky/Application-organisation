@@ -5,10 +5,15 @@
   left: 0; 
   right: 0; 
   
-  /* --- LA MAGIE EST ICI --- */
-  box-sizing: content-box; /* Sépare la hauteur de la marge de sécurité */
-  height: 65px; /* Hauteur fixe pour la zone cliquable */
-  padding-bottom: env(safe-area-inset-bottom); /* Espace dédié UNIQUEMENT à la barre iPhone */
+  /* 1. ON FORCE LE MODE DE CALCUL */
+  box-sizing: content-box !important; 
+  
+  /* 2. HAUTEUR FIXE POUR LES ICÔNES (SANS LE CALC) */
+  height: 65px !important; 
+  
+  /* 3. ESPACE SOUS LES ICÔNES POUR LA BARRE IPHONE */
+  padding-bottom: env(safe-area-inset-bottom) !important; 
+  padding-top: 0 !important;
   
   background: rgba(255, 255, 255, 0.95); 
   backdrop-filter: blur(20px); 
@@ -17,7 +22,7 @@
   
   display: flex; 
   justify-content: space-around; 
-  align-items: center; /* Va centrer parfaitement dans les 65px */
+  align-items: center; 
   z-index: 9999;
 }
 
@@ -33,14 +38,14 @@
   font-size: 10px; 
   font-weight: 600; 
   width: 60px;
-  margin: 0; /* On enlève tous les margins bizarres */
+  margin: 0 !important; 
 }
 
 .nav-item.active { color: black; }
 
 .nav-add-container { 
   position: relative; 
-  top: -20px; /* Fait dépasser le bouton vers le haut proprement */
+  top: -20px; 
 }
 
 .nav-add-btn { 
