@@ -2,6 +2,8 @@
 import React from 'react';
 import { Check, Calendar, LogOut, User } from 'lucide-react';
 import './SettingsView.css';
+import { requestForToken, onMessageListener } from '.././firebaseConfig';
+
 
 export default function SettingsView({ 
   calendars, 
@@ -41,6 +43,16 @@ export default function SettingsView({
 
       <section className="settings-section">
         <h2 className="section-title">Compte</h2>
+        <button className="logout-btn"
+          onClick={() => {
+            requestForToken().then(token => {
+              if(token) alert("Notifications activées !");
+            });
+          }}
+          style={{ padding: '15px', backgroundColor: '#007AFF', color: 'white', borderRadius: '10px' }}
+        >
+          🔔 Activer les notifications sur cet appareil
+        </button>
         <button className="logout-btn" onClick={handleLogout}>
           <LogOut size={18} />
           Déconnexion
