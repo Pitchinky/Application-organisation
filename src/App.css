@@ -40,13 +40,7 @@ body {
   width: 100vw; 
   overflow: hidden; 
   background: var(--bg-app);
-  
-  /* C'EST CETTE LIGNE QUI RÈGLE TON PROBLÈME */
-  /* Elle force l'app à descendre SOUS la Dynamic Island/Encoche */
-  padding-top: env(safe-area-inset-top);
-  
-  /* On protège aussi le bas pour la barre de l'iPhone */
-  padding-bottom: env(safe-area-inset-bottom);
+  position: relative; /* <-- Ajoute juste ça */
 }
 
 .layout-wrapper.mobile { 
