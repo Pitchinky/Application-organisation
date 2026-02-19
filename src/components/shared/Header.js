@@ -43,6 +43,7 @@ export default function Header({
               <button className="nav-arrow" onClick={nextWeek}><ChevronRight size={20} /></button>
            </div>
            
+           {/* MÉTÉO DÉPLACÉE ICI POUR ÊTRE À CÔTÉ DU MOIS */}
            {todaySummary && (
              <div className="weather-pill">
                {getWeatherIcon(todaySummary.weather[0].id, 14)}
@@ -52,11 +53,15 @@ export default function Header({
         </div>
         
         <div className="header-actions">
-           <div className="desktop-only-actions">
-              
-              <button className="desktop-add-btn" onClick={()=>setShowAddModal(true)}><Plus size={16} /> Ajouter</button>
-           </div>
-           {!isSignedIn && <button onClick={handleLogin} className="login-btn-small">Login</button>}
+           {!isSignedIn ? (
+             <button onClick={handleLogin} className="login-btn-google">
+                <span>Connexion</span>
+             </button>
+           ) : (
+             <button className="add-btn-minimal" onClick={()=>setShowAddModal(true)}>
+               <Plus size={20} />
+             </button>
+           )}
         </div>
       </div>
 
