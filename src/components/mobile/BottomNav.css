@@ -5,7 +5,10 @@
   left: 0; 
   right: 0; 
   
-  /* On SUPPRIME la ligne "height: calc(...)" */
+  /* --- LA MAGIE EST ICI --- */
+  box-sizing: content-box; /* Sépare la hauteur de la marge de sécurité */
+  height: 65px; /* Hauteur fixe pour la zone cliquable */
+  padding-bottom: env(safe-area-inset-bottom); /* Espace dédié UNIQUEMENT à la barre iPhone */
   
   background: rgba(255, 255, 255, 0.95); 
   backdrop-filter: blur(20px); 
@@ -14,11 +17,7 @@
   
   display: flex; 
   justify-content: space-around; 
-  align-items: center; 
-  
-  /* C'est le padding qui va définir la hauteur parfaite */
-  padding-top: 10px; 
-  padding-bottom: calc(10px + env(safe-area-inset-bottom)); 
+  align-items: center; /* Va centrer parfaitement dans les 65px */
   z-index: 9999;
 }
 
@@ -34,15 +33,14 @@
   font-size: 10px; 
   font-weight: 600; 
   width: 60px;
-  margin: 0; /* On enlève le margin négatif qui écrasait le texte */
+  margin: 0; /* On enlève tous les margins bizarres */
 }
 
 .nav-item.active { color: black; }
 
 .nav-add-container { 
   position: relative; 
-  /* Fait dépasser le gros bouton noir proprement */
-  top: -20px; 
+  top: -20px; /* Fait dépasser le bouton vers le haut proprement */
 }
 
 .nav-add-btn { 
