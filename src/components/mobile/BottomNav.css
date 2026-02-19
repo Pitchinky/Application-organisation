@@ -5,15 +5,10 @@
   left: 0; 
   right: 0; 
   
-  /* 1. ON FORCE LE MODE DE CALCUL */
-  box-sizing: content-box !important; 
-  
-  /* 2. HAUTEUR FIXE POUR LES ICÔNES (SANS LE CALC) */
-  height: 65px !important; 
-  
-  /* 3. ESPACE SOUS LES ICÔNES POUR LA BARRE IPHONE */
-  padding-bottom: env(safe-area-inset-bottom) !important; 
-  padding-top: 0 !important;
+  /* --- LES 3 LIGNES QUI CORRIGENT TOUT --- */
+  box-sizing: content-box;
+  height: 65px; /* Hauteur fixe, SANS LE CALC */
+  padding-bottom: env(safe-area-inset-bottom); /* Ajoute juste l'espace de la barre iPhone */
   
   background: rgba(255, 255, 255, 0.95); 
   backdrop-filter: blur(20px); 
@@ -38,7 +33,7 @@
   font-size: 10px; 
   font-weight: 600; 
   width: 60px;
-  margin: 0 !important; 
+  margin: 0; /* J'ai retiré le margin négatif ici */
 }
 
 .nav-item.active { color: black; }
@@ -58,8 +53,9 @@
   display: flex; 
   align-items: center; 
   justify-content: center; 
-  box-shadow: 0 8px 20px rgba(0,0,0,0.25); 
+  box-shadow: 0 8px 20px rgba(0,0,0,0.20); 
   cursor: pointer; 
+  transition: transform 0.1s; 
 }
 
 .nav-add-btn:active { transform: scale(0.95); }
