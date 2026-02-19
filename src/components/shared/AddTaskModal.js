@@ -1,27 +1,51 @@
-import React from 'react';
-import { X, Calendar, Clock, Timer } from 'lucide-react';
-import { format } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { X, Calendar, Clock, Plus, Sun } from 'lucide-react';
+import { format, addMinutes, isValid, parse } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getCategoryData } from '../../utils/categoryLogic';
 import { Icon } from '@iconify/react';
 import './AddTaskModal.css';
 
 export default function AddTaskModal({ 
-  onClose, 
-  onAdd, 
-  currentDate, setCurrentDate, // On utilise setCurrentDate ici
+  onClose, onAdd, currentDate, setCurrentDate,
   newTaskTitle, setNewTaskTitle, 
   newTaskTime, setNewTaskTime, 
   newTaskDuration, setNewTaskDuration 
 }) {
   
+  const [localDate, setLocalDate] = useState(currentDate || new Date());
+  const [isAllDay, setIsAllDay] = useState(false);
+  const [subtasks, setSubtasks] = useState([]);
+  const [tempSubtask, setTempSubtask] = useState('');
+
+  useEffect(() => {
+    if (currentDate) setLocalDate(currentDate);
+  }, [currentDate]);
+
   const { icon, color } = getCategoryData(newTaskTitle);
 
-  // Fonction pour gérer le changement de date proprement
+  const duration = parseInt(newTaskDuration) || 0;
+  const h = Math.floor(duration / 60);
+  const m = duration % 60;
+
+  const quickPresets = [
+    { label: '15m', val: 15 }, { label: '30m', val: 30 },
+    { label: '1h', val: 60 }, { label: '2h', val: 120 }
+  ];
+
+  const getEndTime = () => {
+    if (!newTaskTime || isAllDay) return '--:--';
+    try {
+      const dateRef = parse(newTaskTime, 'HH:mm', new Date());
+      return format(addMinutes(dateRef, duration), 'HH:mm');
+    } catch (e) { return '--:--'; }
+  };
+
   const handleDateChange = (e) => {
-    const newDate = new Date(e.target.value);
-    if (!isNaN(newDate.getTime())) {
-      setCurrentDate(newDate);
+    const selected = new Date(e.target.value);
+    if (isValid(selected)) {
+      setLocalDate(selected);
+      setCurrentDate(selected);
     }
   };
 
@@ -30,85 +54,87 @@ export default function AddTaskModal({
       <div className="modal-card-mini" onClick={e => e.stopPropagation()}>
         
         <div className="mini-header" style={{ backgroundColor: color }}>
-          <div className="floating-pill-icon">
-            <Icon icon={icon} color="white" width="24" />
+          <div className="header-date-center">
+            {isValid(localDate) ? format(localDate, 'eeee d MMMM yyyy', { locale: fr }) : ''}
           </div>
-          <button className="mini-close" onClick={onClose}><X size={18} /></button>
+
+          <div className="floating-pill-icon">
+            <Icon icon={icon} color="white" width="22" />
+          </div>
+          <button className="mini-close" onClick={onClose}><X size={16} /></button>
         </div>
 
         <div className="mini-body">
-          <div className="title-wrap">
-             <input 
-                type="text" 
-                placeholder="Nouvelle tâche..." 
-                className="mini-input-title"
-                value={newTaskTitle}
-                onChange={e => setNewTaskTitle(e.target.value)}
-                autoFocus={false} 
-              />
-              <p className="mini-time-info">
-                {newTaskTime} • {newTaskDuration} min
-              </p>
+          <input type="text" placeholder="Nouvelle tâche..." className="mini-input-title"
+                value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} />
+          
+          <div className="time-preview-badge" style={{color: color, backgroundColor: `${color}15`}}>
+            {isAllDay ? "Toute la journée" : `${newTaskTime} — ${getEndTime()} (${h > 0 ? `${h}h` : ''}${m > 0 ? `${m}m` : ''})`}
           </div>
 
-          <div className="mini-settings-grid">
-            {/* DATE : Cliquable pour ouvrir le calendrier natif */}
+          <div className="mini-settings-grid-advanced">
             <div className="mini-setting-item">
-              <Calendar size={14} color={color} />
-              <span>{format(currentDate || new Date(), 'd MMM', { locale: fr })}</span>
-              <input 
-                type="date" 
-                className="abs-input" 
-                value={format(currentDate || new Date(), 'yyyy-MM-dd')}
+              <Calendar size={12} color={color} />
+              <span>{isValid(localDate) ? format(localDate, 'd MMM', { locale: fr }) : 'Date'}</span>
+              <input type="date" className="abs-input" 
+                value={isValid(localDate) ? format(localDate, 'yyyy-MM-dd') : ''}
                 onChange={handleDateChange} 
               />
             </div>
 
-            {/* HEURE */}
-            <div className="mini-setting-item">
-              <Clock size={14} color={color} />
+            <div className={`mini-setting-item ${isAllDay ? 'disabled-opt' : ''}`}>
+              <Clock size={12} color={color} />
               <span>{newTaskTime}</span>
-              <input 
-                type="time" 
-                className="abs-input" 
-                value={newTaskTime} 
-                onChange={e => setNewTaskTime(e.target.value)} 
-              />
+              <input type="time" className="abs-input" value={newTaskTime} onChange={e => setNewTaskTime(e.target.value)} />
             </div>
 
-            {/* DURÉE : Lecture seule (On utilise le slider) */}
-            <div className="mini-setting-item">
-              <Timer size={14} color={color} />
-              <span>{newTaskDuration}m</span>
+            <div className={`mini-setting-item ${isAllDay ? 'active-all-day' : ''}`} onClick={() => setIsAllDay(!isAllDay)}>
+              <Sun size={12} color={isAllDay ? 'white' : color} />
+              <span>Journée</span>
             </div>
           </div>
 
-          <div className="duration-slider-container">
-            <input 
-              type="range" 
-              min="5" 
-              max="120" 
-              step="5" 
-              value={newTaskDuration} 
-              onChange={e => setNewTaskDuration(e.target.value)}
-              style={{ accentColor: color }}
-            />
-            <div className="slider-labels">
-                <span>5m</span>
-                <span>1h</span>
-                <span>2h</span>
+          {!isAllDay && (
+            <div className="duration-hybrid-selector">
+              <div className="duration-quick-grid">
+                {quickPresets.map(p => (
+                  <button key={p.val} className={`preset-btn ${duration === p.val ? 'active' : ''}`}
+                    style={{ '--active-bg': color }} onClick={() => setNewTaskDuration(p.val)}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              
+              {/* RETOUR AU DESIGN WHEEL PICKER D'AVANT */}
+              <div className="duration-wheel-box">
+                <div className="wheel-col">
+                  <select value={h} onChange={(e) => setNewTaskDuration(parseInt(e.target.value) * 60 + m)}>
+                    {[...Array(24).keys()].map(v => <option key={v} value={v}>{v} h</option>)}
+                  </select>
+                </div>
+                <div className="wheel-sep">:</div>
+                <div className="wheel-col">
+                  <select value={m} onChange={(e) => setNewTaskDuration(h * 60 + parseInt(e.target.value))}>
+                    {[...Array(60).keys()].map(v => <option key={v} value={v}>{v} min</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="subtasks-mini-section">
+            <div className="sub-input-wrap">
+              <input type="text" placeholder="Ajouter une étape..." value={tempSubtask}
+                onChange={e => setTempSubtask(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && (tempSubtask.trim() && setSubtasks([...subtasks, {id: Date.now(), text: tempSubtask}]) || setTempSubtask(''))} />
+              <Plus size={16} color={color} onClick={() => {if(tempSubtask.trim()){setSubtasks([...subtasks, {id: Date.now(), text: tempSubtask}]); setTempSubtask('');}}} style={{cursor:'pointer'}} />
             </div>
           </div>
 
-          <button 
-            className="mini-btn-save" 
-            onClick={onAdd}
-            disabled={!newTaskTitle}
-            style={{ 
-              backgroundColor: newTaskTitle ? color : '#F2F2F7', 
-              color: newTaskTitle ? 'white' : '#C7C7CC'
-            }}
-          >
+          <button className="mini-btn-save" 
+            onClick={() => onAdd({title: newTaskTitle, allDay: isAllDay, subtasks, date: localDate})}
+            disabled={!newTaskTitle} 
+            style={{ backgroundColor: newTaskTitle ? color : '#F2F2F7', color: newTaskTitle ? 'white' : '#C7C7CC' }}>
             Ajouter la tâche
           </button>
         </div>
