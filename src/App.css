@@ -11,46 +11,101 @@
   --nav-height: 85px; 
 }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+* { 
+  box-sizing: border-box; 
+  -webkit-tap-highlight-color: transparent; 
+}
 
-html { height: 100%; overscroll-behavior-y: none; }
+html { 
+  height: 100%; 
+  overscroll-behavior-y: none; 
+}
+
 body {
-  margin: 0; padding: 0;
+  margin: 0; 
+  padding: 0;
   font-family: 'Inter', -apple-system, sans-serif;
   background-color: var(--bg-app);
   color: var(--text-main);
-  height: 100%; width: 100%; position: fixed; overflow: hidden;
+  height: 100%; 
+  width: 100%; 
+  /* Changement ici pour éviter les bugs de scroll sur iOS */
+  position: fixed; 
+  overflow: hidden;
 }
 
 /* Structure Globale */
 .layout-wrapper { 
-  display: flex; height: 100dvh; width: 100vw; 
-  overflow: hidden; background: var(--bg-app);
+  display: flex; 
+  /* Utilisation de 100dvh pour le plein écran dynamique */
+  height: 100dvh; 
+  width: 100vw; 
+  overflow: hidden; 
+  background: var(--bg-app);
+  
+  /* CORRECTIF IPHONE : On pousse le contenu sous l'encoche (le notch) */
+  padding-top: env(safe-area-inset-top);
+  /* On protège aussi le bas (pour la barre de l'iPhone ou Safari) */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-.layout-wrapper.mobile { flex-direction: column; }
+.layout-wrapper.mobile { 
+  flex-direction: column; 
+}
+
 .mobile-content-container { 
-  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; 
-  padding-bottom: calc(var(--nav-height) + 20px); position: relative; 
+  flex: 1; 
+  overflow-y: auto; 
+  -webkit-overflow-scrolling: touch; 
+  /* Correction du padding bas pour inclure la zone de sécurité et la nav bar */
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + 20px); 
+  position: relative; 
 }
 
-.layout-wrapper.desktop { flex-direction: row; }
+.layout-wrapper.desktop { 
+  flex-direction: row; 
+}
+
 .desktop-main-content { 
-  flex: 1; height: 100%; overflow-y: auto; position: relative; background: white; 
+  flex: 1; 
+  height: 100%; 
+  overflow-y: auto; 
+  position: relative; 
+  background: white; 
 }
 
-/* Modale (Utilisée un peu partout, on la laisse ici ou on fait un Modal.css) */
+/* Modale */
 .modal-backdrop { 
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-    background: rgba(0,0,0,0.3); backdrop-filter: blur(8px);
-    z-index: 20000; display: flex; align-items: center; justify-content: center;
+    position: fixed; 
+    top: 0; left: 0; right: 0; bottom: 0; 
+    background: rgba(0,0,0,0.3); 
+    backdrop-filter: blur(8px);
+    z-index: 20000; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    /* On s'assure que la modale n'est pas coupée par les bords */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
+
 .modal-sheet { 
-    background: white; width: 85%; max-width: 320px; border-radius: 28px; padding: 24px; 
-    box-shadow: 0 20px 50px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 20px;
+    background: white; 
+    width: 90%; /* Un peu plus large sur mobile */
+    max-width: 340px; 
+    border-radius: 28px; 
+    padding: 24px; 
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25); 
+    display: flex; 
+    flex-direction: column; 
+    gap: 20px;
     animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-@keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+@keyframes popIn { 
+  from { opacity: 0; transform: scale(0.9); } 
+  to { opacity: 1; transform: scale(1); } 
+}
+
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
 .modal-header h2 { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
 .close-icon { background: #F2F2F7; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #8E8E93; cursor: pointer; }
