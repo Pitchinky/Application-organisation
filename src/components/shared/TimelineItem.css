@@ -124,7 +124,7 @@
   width: 100%; 
   display: flex; 
   justify-content: space-between; 
-  align-items: flex-start;
+  align-items: center;
   padding: 12px 0;
   position: relative;
 }
@@ -133,9 +133,15 @@
   flex: 1;
 }
 
-.card-text h3 {
-  margin: 0;
-  line-height: 26px; /* Doit faire la taille de tes icônes pour l'alignement */
+.card-text h3 { 
+  margin: 0; 
+  font-size: 16px; 
+  font-weight: 700; 
+  color: #1C1C1E; 
+  /* CETTE LIGNE EST LA CLÉ : elle doit matcher la hauteur de .card-actions-right */
+  line-height: 26px; 
+  display: flex;
+  align-items: center; /* Centre le texte dans sa propre ligne */
 }
 
 /* --- NOUVELLE BARRE DE TITRE ALIGNÉE --- */
@@ -356,6 +362,7 @@
   height: 26px;
   flex-shrink: 0;
   position: relative; /* Nécessaire pour le z-index du menu */
+  flex-shrink: 0;
 }
 
 .options-container {
@@ -398,4 +405,8 @@
 .timeline-row {
   /* ... tes styles actuels ... */
   z-index: auto; 
+}
+
+.location, .task-subtasks-list {
+  width: 100%;
 }

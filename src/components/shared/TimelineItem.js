@@ -102,7 +102,9 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
             {isCur && !checked && (
               <span className="status-label" style={{color: catColor}}>{Math.round(100 - progress)}% restant</span>
             )}
-            <h3>{e.summary}</h3>
+            <h3 style={{ textDecoration: checked ? 'line-through' : 'none' }}>
+        {e.summary}
+      </h3>
             {e.location && !isShort && <p className="location">{e.location}</p>}
 
             {hasSubtasks && !isShort && (
