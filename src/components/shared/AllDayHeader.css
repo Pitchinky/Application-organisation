@@ -4,6 +4,7 @@
     border-bottom: 1px solid #F2F2F7;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    
   }
   
   .all-day-section::-webkit-scrollbar { display: none; }
