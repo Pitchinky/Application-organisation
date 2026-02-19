@@ -2,13 +2,14 @@ import React from 'react';
 import Header from '../components/shared/Header';
 import TimelineItem from '../components/shared/TimelineItem';
 import { processTimeline } from '../utils/timelineLogic';
+import AllDayHeader from '../components/shared/AllDayHeader';
 
 import './TimelineView.css';
 
 export default function TimelineView({ 
   events, currentDate, setCurrentDate, todaySummary, calendars, 
   showCalMenu, setShowCalMenu, setShowAddModal, handleLogin, isSignedIn,
-  now, completedEvents, toggleTaskCompletion, isLoading, forecast, onToggleSubtask, onDeleteEvent, onEditEvent
+  now, completedEvents, toggleTaskCompletion, isLoading, forecast, onToggleSubtask, onDeleteEvent, onEditEvent, allDayEvents,
 }) {
   
   // Génère les données de la timeline (incluant les Gaps/Temps libres)
@@ -28,6 +29,10 @@ export default function TimelineView({
         isSignedIn={isSignedIn}
         handleLogin={handleLogin}
       />
+
+      {/* 2. AJOUT DU HEADER ALL DAY ICI */}
+      <AllDayHeader events={allDayEvents} completedEvents={completedEvents} 
+  onToggle={toggleTaskCompletion} />
 
       <div className="timeline-area" onClick={() => setShowCalMenu(false)}>
          {isSignedIn ? (

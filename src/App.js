@@ -148,7 +148,20 @@ function App() {
       });
   
       const res = await Promise.all(promises);
-      const flatEvents = res.flat().sort((a,b) => new Date(a.start.dateTime) - new Date(b.start.dateTime));
+
+      // Tri corrigé : gère dateTime (heure) ET date (toute la journée)
+      const flatEvents = res.flat().sort((a, b) => {
+        const startA = new Date(a.start.dateTime || a.start.date);
+        const startB = new Date(b.start.dateTime || b.start.date);
+        
+        // Si c'est la même heure (ex: deux All Day), on trie par titre
+        if (startA.getTime() === startB.getTime()) {
+          return a.summary.localeCompare(b.summary);
+        }
+        
+        return startA - startB;
+      });
+
       setEvents(flatEvents);
       
     } catch(e) { 
@@ -192,29 +205,41 @@ function App() {
     if (!taskData.title) return;
   
     try {
-      const [h, m] = newTaskTime.split(':');
-      const start = new Date(currentDate);
-      start.setHours(parseInt(h), parseInt(m), 0);
-      const end = new Date(start.getTime() + newTaskDuration * 60000);
+      let start, end, resource;
   
-      const resource = {
-        summary: taskData.title,
-        start: { dateTime: start.toISOString() },
-        end: { dateTime: end.toISOString() }
-      };
+      if (taskData.allDay) {
+        // --- CAS ALL DAY ---
+        // On formate la date en YYYY-MM-DD (format requis par Google pour All Day)
+        const dateString = format(taskData.date, 'yyyy-MM-dd');
+        
+        resource = {
+          summary: taskData.title,
+          start: { date: dateString },
+          end: { date: dateString } // Pour une seule journée, start et end sont identiques
+        };
+      } else {
+        // --- CAS CHRONOLOGIQUE (Heure précise) ---
+        const [h, m] = taskData.time.split(':');
+        const startDate = new Date(taskData.date);
+        startDate.setHours(parseInt(h), parseInt(m), 0);
+        const endDate = new Date(startDate.getTime() + taskData.duration * 60000);
+  
+        resource = {
+          summary: taskData.title,
+          start: { dateTime: startDate.toISOString() },
+          end: { dateTime: endDate.toISOString() }
+        };
+      }
   
       let googleId;
-  
       if (editingEvent) {
-        // MODE ÉDITION : On met à jour l'existant
-        const response = await gapi.client.calendar.events.patch({
+        await gapi.client.calendar.events.patch({
           calendarId: 'primary',
           eventId: editingEvent.id,
           resource: resource
         });
         googleId = editingEvent.id;
       } else {
-        // MODE CRÉATION : On insère un nouveau
         const response = await gapi.client.calendar.events.insert({
           calendarId: 'primary',
           resource: resource
@@ -222,13 +247,13 @@ function App() {
         googleId = response.result.id;
       }
   
-      // Mise à jour de Firebase (écrase ou crée les subtasks)
+      // Sauvegarde subtasks dans Firebase
       await setDoc(doc(db, "task_details", googleId), {
         subtasks: taskData.subtasks,
         updatedAt: new Date().toISOString()
       });
   
-      closeAddModal(); // Utilise la nouvelle fonction de fermeture
+      closeAddModal();
       setTimeout(fetchAllEvents, 500);
     } catch (e) {
       console.error(e);
@@ -264,9 +289,16 @@ function App() {
   const handleEditEvent = (event) => {
     setEditingEvent(event);
     setNewTaskTitle(event.summary);
-    // On extrait l'heure du format ISO de Google
-    const startTime = new Date(event.start.dateTime);
-    setNewTaskTime(format(startTime, 'HH:mm'));
+    
+    // Si c'est une tâche à heure précise
+    if (event.start.dateTime) {
+      const startTime = new Date(event.start.dateTime);
+      setNewTaskTime(format(startTime, 'HH:mm'));
+    } else {
+      // Si c'est un All Day, on met une heure par défaut pour le sélecteur
+      setNewTaskTime("12:00");
+    }
+    
     setShowAddModal(true);
   };
 
@@ -280,6 +312,10 @@ function App() {
 
   const toggleCalendar = (id) => setSelectedCalendarIds(p => p.includes(id) ? p.filter(i=>i!==id) : [...p, id]);
 
+  // Exemple de tri à faire avant le rendu
+  const allDayEvents = events.filter(e => e.start.date && !e.start.dateTime);
+  const timelineEvents = events.filter(e => e.start.dateTime);
+
   const todaySummary = getDailySummary(new Date(), forecast);
 
   // --- RENDU ---
@@ -289,12 +325,12 @@ function App() {
         return (
           <TimelineView 
             forecast={forecast}
-            events={events} currentDate={currentDate} setCurrentDate={setCurrentDate}
+            events={timelineEvents} currentDate={currentDate} setCurrentDate={setCurrentDate}
             now={now} completedEvents={completedEvents} toggleTaskCompletion={toggleTaskCompletion}
             isSignedIn={isSignedIn} handleLogin={()=>tokenClient?.requestAccessToken()}
             isLoading={isLoading} todaySummary={todaySummary} calendars={calendars}
             showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu} setShowAddModal={setShowAddModal}
-            onToggleSubtask={handleToggleSubtask} onDeleteEvent={handleDeleteEvent} onEditEvent={handleEditEvent}
+            onToggleSubtask={handleToggleSubtask} onDeleteEvent={handleDeleteEvent} onEditEvent={handleEditEvent} allDayEvents={allDayEvents}
           />
         );
       case 'settings': 

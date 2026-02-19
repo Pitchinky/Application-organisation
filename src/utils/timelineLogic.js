@@ -4,20 +4,31 @@ export const PX_PER_MIN = 0.6;
 export const THRESHOLD_SHORT_EVENT = 50; // Minutes en dessous desquelles c'est un rond
 
 export const processTimeline = (events, currentDate) => {
-  if (!events || events.length === 0) return [];
-  
   const timelineItems = [];
   const dayStart = startOfDay(currentDate);
   const dayEnd = endOfDay(currentDate);
   let lastTime = dayStart;
 
+  // --- CORRECTION ICI ---
+  // Si pas d'événements, on génère un seul grand GAP de 00:00 à 23:59
+  if (!events || events.length === 0) {
+    const totalDuration = differenceInMinutes(dayEnd, dayStart);
+    return [{
+      type: 'gap',
+      start: dayStart,
+      end: dayEnd,
+      duration: totalDuration,
+      height: totalDuration * PX_PER_MIN
+    }];
+  }
+  
+  // Si on a des événements, on déroule la logique habituelle
   events.forEach((event) => {
     if (!event.start.dateTime) return;
 
     const start = parseISO(event.start.dateTime);
     const end = parseISO(event.end.dateTime);
 
-    // Calcul du trou (Gap)
     const gapDuration = differenceInMinutes(start, lastTime);
     if (gapDuration > 0) {
       timelineItems.push({
@@ -29,7 +40,6 @@ export const processTimeline = (events, currentDate) => {
       });
     }
 
-    // Calcul de l'événement
     const eventDuration = differenceInMinutes(end, start);
     timelineItems.push({
       type: 'event',
@@ -41,7 +51,6 @@ export const processTimeline = (events, currentDate) => {
     lastTime = end;
   });
 
-  // Gap de fin de journée
   const endGap = differenceInMinutes(dayEnd, lastTime);
   if (endGap > 0) {
     timelineItems.push({

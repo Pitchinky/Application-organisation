@@ -78,6 +78,11 @@ const CATEGORIES = {
     color: '#FFCC00', 
     keywords: ['reveil', 'réveil'] 
   },
+  SKI: { 
+    icon: 'mdi:ski', 
+    color: '#A7B5D9', 
+    keywords: ['ski', 'neige'] 
+  },
   DEFAUT: { 
     icon: 'solar:notes-bold', 
     color: '#8E8E93', 
