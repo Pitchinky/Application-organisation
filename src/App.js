@@ -286,19 +286,24 @@ function App() {
   const [editingEvent, setEditingEvent] = useState(null);
 
   // Fonction pour ouvrir le modal en mode édition
+
   const handleEditEvent = (event) => {
-    setEditingEvent(event);
-    setNewTaskTitle(event.summary);
-    
-    // Si c'est une tâche à heure précise
-    if (event.start.dateTime) {
-      const startTime = new Date(event.start.dateTime);
-      setNewTaskTime(format(startTime, 'HH:mm'));
+    if (event.isNewFromGap) {
+      setEditingEvent(null); // Ce n'est pas une édition, c'est un nouveau
+      setNewTaskTitle("");
+      setNewTaskTime(event.startTime); // ON FORCE L'HEURE DU TROU
+      setNewTaskDuration(event.gapDuration);
     } else {
-      // Si c'est un All Day, on met une heure par défaut pour le sélecteur
-      setNewTaskTime("12:00");
+      // ... ta logique d'édition habituelle ...
+      setEditingEvent(event);
+      setNewTaskTitle(event.summary);
+      const startTime = new Date(event.start.dateTime || event.start.date);
+      setNewTaskTime(format(startTime, 'HH:mm'));
+
+      const endTime = new Date(event.end.dateTime || event.end.date);
+      const diff = Math.round((endTime - startTime) / 60000);
+      setNewTaskDuration(diff);
     }
-    
     setShowAddModal(true);
   };
 

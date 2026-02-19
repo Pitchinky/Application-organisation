@@ -410,3 +410,35 @@
 .location, .task-subtasks-list {
   width: 100%;
 }
+
+.gap-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* ... ton reste de style ... */
+}
+
+.gap-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #F2F2F7;
+  border: 1px solid #E5E5EA;
+  color: #8E8E93;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  opacity: 0.5; /* On le cache par défaut */
+}
+
+
+
+.gap-add-btn:hover {
+  background-color: #007AFF; /* Bleu iOS au survol */
+  color: white;
+  border-color: #007AFF;
+  transform: scale(1.1);
+}

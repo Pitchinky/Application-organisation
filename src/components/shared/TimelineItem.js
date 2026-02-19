@@ -4,7 +4,7 @@ import { Icon } from '@iconify/react';
 import { getCategoryData } from '../../utils/categoryLogic';
 import { getEventStatus, THRESHOLD_SHORT_EVENT, formatDuration } from '../../utils/timelineLogic';
 import './TimelineItem.css';
-import { MoreHorizontal, Trash2, Edit2 } from 'lucide-react';
+import { MoreHorizontal, Trash2, Edit2, Plus } from 'lucide-react';
 
 export default function TimelineItem({ item, now, completedEvents, toggleTaskCompletion, onToggleSubtask, onDeleteEvent, onEditEvent }) {
 
@@ -13,6 +13,10 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
   if (item.type === 'gap') {
     const showLabel = item.duration >= 15;
     const gapHeight = Math.max(item.height, 20);
+    
+    // On récupère l'heure du début du trou pour le bouton +
+    const gapStartTime = format(item.start, 'HH:mm');
+  
     return (
       <div className="timeline-gap" style={{ height: `${gapHeight}px` }}>
         <div className="gap-line"></div>
@@ -20,6 +24,18 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
           <div className="gap-label">
             <span className="gap-dots">•••</span>
             <span>{formatDuration(item.duration)} de libre</span>
+            
+            {/* LE PETIT BOUTON PLUS */}
+            <button 
+              className="gap-add-btn"
+              onClick={() => onEditEvent({ 
+                isNewFromGap: true, 
+                startTime: gapStartTime,
+                gapDuration: item.duration // On passe la durée du trou ici
+              })}
+            >
+              <Plus size={14} />
+            </button>
           </div>
         )}
       </div>
