@@ -1,13 +1,13 @@
 /* src/components/mobile/BottomNav.css */
 .mobile-bottom-nav {
-  position: fixed; /* On la cloue en bas */
+  position: fixed; 
   bottom: 0; 
   left: 0; 
   right: 0; 
   
-  /* C'est ça qui fait la finesse de la barre : juste 12px d'espace autour des icônes ! */
-  padding-top: 12px; 
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  /* On met juste l'espace de sécurité d'Apple, sans ajouter de calc géant */
+  padding-top: 10px; 
+  padding-bottom: max(15px, env(safe-area-inset-bottom));
   
   background: rgba(255, 255, 255, 0.95); 
   backdrop-filter: blur(20px); 
@@ -16,7 +16,9 @@
   
   display: flex; 
   justify-content: space-around; 
-  align-items: center; /* Centre les icônes verticalement */
+  
+  /* C'EST ICI LA MAGIE : On centre les icônes pour écraser le vide blanc */
+  align-items: center; 
   z-index: 9999;
 }
 
@@ -40,7 +42,7 @@
 
 .nav-add-container { 
   position: relative; 
-  top: -20px; /* Fait dépasser le bouton légèrement vers le haut */
+  top: -15px; /* On ajuste le + pour qu'il soit bien proportionné */
 }
 
 .nav-add-btn { 
@@ -55,7 +57,5 @@
   justify-content: center; 
   box-shadow: 0 8px 20px rgba(0,0,0,0.20); 
   cursor: pointer; 
-  transition: transform 0.1s; 
 }
-
 .nav-add-btn:active { transform: scale(0.95); }

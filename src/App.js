@@ -105,29 +105,30 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // 1. Demander le token et l'ENREGISTRER
-    requestForToken().then(async (token) => {
-      if (token) {
-        // On sauvegarde le token dans Firestore pour pouvoir envoyer des messages après
-        // "mon_profil" est un ID arbitraire ici, tu pourras le rendre dynamique plus tard
-        try {
-          await setDoc(doc(db, "users", "mon_profil"), {
-            fcmToken: token,
-            lastActive: new Date()
-          }, { merge: true });
-          console.log("Token sauvegardé en base !");
-        } catch (error) {
-          console.error("Erreur sauvegarde token :", error);
+    if (!('serviceWorker' in navigator)) return;
+    // 1. Demander le token et l'ENREGISTRER avec un parachute (.catch)
+    requestForToken()
+      .then(async (token) => {
+        if (token) {
+          try {
+            await setDoc(doc(db, "users", "mon_profil"), {
+              fcmToken: token,
+              lastActive: new Date()
+            }, { merge: true });
+            console.log("Token sauvegardé en base !");
+          } catch (error) {
+            console.error("Erreur sauvegarde token :", error);
+          }
         }
-      }
-    });
+      })
+      .catch(err => console.log("Notifications ignorées (Réseau local)")); // <-- LE PARACHUTE EST LÀ
   
-    // 2. Écouter les notifications "In-App"
-    onMessageListener().then(payload => {
-      console.log("Notification reçue en direct :", payload);
-      // Au lieu d'une alerte moche, on peut juste log ou faire un petit toast
-      alert(`${payload.notification.title}: ${payload.notification.body}`);
-    }).catch(err => console.log('failed: ', err));
+    // 2. Écouter les notifications
+    onMessageListener()
+      .then(payload => {
+        alert(`${payload.notification.title}: ${payload.notification.body}`);
+      })
+      .catch(err => console.log("Écoute ignorée:", err)); // <-- L'AUTRE PARACHUTE
   }, []);
 
   useEffect(() => {
