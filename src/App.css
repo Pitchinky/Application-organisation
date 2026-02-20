@@ -20,7 +20,7 @@
 /* 1. ON FORCE LE VRAI PLEIN ÉCRAN IPHONE */
 html, body, #root { 
   width: 100%;
-  height: 110%; /* Le 100dvh est obligatoire pour couvrir la bande blanche */
+  height: 110%; /* Ta trouvaille magique pour tuer la bande blanche ! */
   margin: 0; 
   padding: 0;
   overflow: hidden; 
@@ -29,22 +29,19 @@ html, body, #root {
 
 body {
   font-family: 'Inter', -apple-system, sans-serif;
-  background-color: var(--bg-app);
   color: var(--text-main);
 }
 
-/* 2. L'ARME NUCLÉAIRE : Plus de "height", on étire le container ! */
+/* 2. LE CONTAINER */
 .layout-wrapper { 
-  position: absolute; /* LA MAGIE EST ICI */
-  top: 0;             /* LA MAGIE EST ICI */
-  bottom: 0;          /* LA MAGIE EST ICI */
-  left: 0;            /* LA MAGIE EST ICI */
-  right: 0;           /* LA MAGIE EST ICI */
+  position: absolute; 
+  top: 0;             
+  bottom: 0;          
+  left: 0;            
+  right: 0;           
   display: flex; 
   overflow: hidden; 
   background: var(--bg-app);
-  
-  /* On protège juste l'encoche iPhone en haut */
   padding-top: env(safe-area-inset-top);
 }
 
@@ -57,10 +54,11 @@ body {
   flex: 1; 
   overflow-y: auto; 
   -webkit-overflow-scrolling: touch; 
-  /* Grand espace pour scroller au-dessus de la nav bar */
-  padding-bottom: 120px; 
+  padding-bottom: 200px; 
   position: relative; 
 }
+
+
 
 .layout-wrapper.desktop { 
   flex-direction: row; 
