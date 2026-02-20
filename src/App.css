@@ -20,7 +20,7 @@
 /* 1. ON FORCE LE VRAI PLEIN ÉCRAN IPHONE */
 html, body, #root { 
   width: 100%;
-  height: 100dvh; /* Le 100dvh est obligatoire pour couvrir la bande blanche */
+  height: 110%; /* Le 100dvh est obligatoire pour couvrir la bande blanche */
   margin: 0; 
   padding: 0;
   overflow: hidden; 

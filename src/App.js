@@ -104,9 +104,14 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
-    // 1. Demander le token et l'ENREGISTRER avec un parachute (.catch)
+useEffect(() => {
+    // TA LIGNE MAGIQUE : On annule tout si on n'est pas en HTTPS (réseau local)
+    if (!('serviceWorker' in navigator)) {
+      console.log("Service Worker non disponible (Réseau local bloqué par iOS)");
+      return; 
+    }
+
+    // 1. Demander le token et l'ENREGISTRER
     requestForToken()
       .then(async (token) => {
         if (token) {
@@ -121,14 +126,14 @@ function App() {
           }
         }
       })
-      .catch(err => console.log("Notifications ignorées (Réseau local)")); // <-- LE PARACHUTE EST LÀ
+      .catch(err => console.log("Erreur token :", err));
   
     // 2. Écouter les notifications
     onMessageListener()
       .then(payload => {
         alert(`${payload.notification.title}: ${payload.notification.body}`);
       })
-      .catch(err => console.log("Écoute ignorée:", err)); // <-- L'AUTRE PARACHUTE
+      .catch(err => console.log('failed: ', err));
   }, []);
 
   useEffect(() => {
