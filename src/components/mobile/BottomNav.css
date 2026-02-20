@@ -1,9 +1,10 @@
 /* src/components/mobile/BottomNav.css */
 .mobile-bottom-nav {
   position: fixed; 
-  bottom: 0; 
+  bottom: -20px; 
   left: 0; 
   right: 0; 
+  
   
   /* On met juste l'espace de sécurité d'Apple, sans ajouter de calc géant */
   padding-top: 10px; 
