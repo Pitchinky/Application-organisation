@@ -16,50 +16,48 @@
   -webkit-tap-highlight-color: transparent; 
 }
 
-html { 
-  height: 100%; 
+/* src/App.css */
+/* 1. ON FORCE LE VRAI PLEIN ÉCRAN IPHONE */
+html, body, #root { 
   width: 100%;
-  overscroll-behavior-y: none; 
+  height: 100dvh; /* Le 100dvh est obligatoire pour couvrir la bande blanche */
+  margin: 0; 
+  padding: 0;
+  overflow: hidden; 
+  background-color: var(--bg-app);
 }
 
 body {
-  margin: 0; 
-  padding: 0;
   font-family: 'Inter', -apple-system, sans-serif;
   background-color: var(--bg-app);
   color: var(--text-main);
-  height: 100%; 
-  width: 100%; 
-  /* Changement ici pour éviter les bugs de scroll sur iOS */
-  /*position: fixed; */
-  overflow: hidden;
 }
 
+/* 2. L'ARME NUCLÉAIRE : Plus de "height", on étire le container ! */
 .layout-wrapper { 
+  position: absolute; /* LA MAGIE EST ICI */
+  top: 0;             /* LA MAGIE EST ICI */
+  bottom: 0;          /* LA MAGIE EST ICI */
+  left: 0;            /* LA MAGIE EST ICI */
+  right: 0;           /* LA MAGIE EST ICI */
   display: flex; 
-  height: 100%; /* <-- LE SECRET EST ICI : PAS DE 100dvh */
-  width: 100%; 
   overflow: hidden; 
   background: var(--bg-app);
-   /* C'EST CETTE LIGNE QUI RÈGLE TON PROBLÈME */
-  /* Elle force l'app à descendre SOUS la Dynamic Island/Encoche */
-  padding-top: env(safe-area-inset-top);
   
-  /* On protège aussi le bas pour la barre de l'iPhone */
-  padding-bottom: env(safe-area-inset-bottom);
-  position: relative; /* <-- Ajoute juste ça */
+  /* On protège juste l'encoche iPhone en haut */
+  padding-top: env(safe-area-inset-top);
 }
 
 .layout-wrapper.mobile { 
   flex-direction: column; 
 }
 
-/* Dans App.css */
+/* 3. LA ZONE DE SCROLL MOBILE */
 .mobile-content-container { 
   flex: 1; 
   overflow-y: auto; 
   -webkit-overflow-scrolling: touch; 
-  /* Force un grand espace vide en bas pour pouvoir scroller au-dessus du gros bouton + */
+  /* Grand espace pour scroller au-dessus de la nav bar */
   padding-bottom: 120px; 
   position: relative; 
 }
@@ -76,7 +74,7 @@ body {
   background: white; 
 }
 
-/* Modale */
+/* --- Modale (Ton code d'origine intact) --- */
 .modal-backdrop { 
     position: fixed; 
     top: 0; left: 0; right: 0; bottom: 0; 
@@ -86,13 +84,12 @@ body {
     display: flex; 
     align-items: center; 
     justify-content: center;
-    /* On s'assure que la modale n'est pas coupée par les bords */
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .modal-sheet { 
     background: white; 
-    width: 90%; /* Un peu plus large sur mobile */
+    width: 90%; 
     max-width: 340px; 
     border-radius: 28px; 
     padding: 24px; 

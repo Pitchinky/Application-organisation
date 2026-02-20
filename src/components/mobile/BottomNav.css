@@ -1,35 +1,61 @@
 /* src/components/mobile/BottomNav.css */
 .mobile-bottom-nav {
-  position: fixed; 
+  position: fixed; /* On la cloue en bas */
   bottom: 0; 
   left: 0; 
   right: 0; 
-  height: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  
+  /* C'est ça qui fait la finesse de la barre : juste 12px d'espace autour des icônes ! */
+  padding-top: 12px; 
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  
   background: rgba(255, 255, 255, 0.95); 
   backdrop-filter: blur(20px); 
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid rgba(0,0,0,0.05);
-  display: flex; justify-content: space-around; align-items: flex-start;
-  padding-top: 10px; 
-  padding-bottom: env(safe-area-inset-bottom); 
+  
+  display: flex; 
+  justify-content: space-around; 
+  align-items: center; /* Centre les icônes verticalement */
   z-index: 9999;
 }
 
 .nav-item { 
-  background: none; border: none; 
-  display: flex; flex-direction: column; align-items: center; gap: 4px; 
-  color: #999; cursor: pointer; 
-  font-size: 10px; font-weight: 600; width: 60px; 
+  background: none; 
+  border: none; 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 4px; 
+  color: #999; 
+  cursor: pointer; 
+  font-size: 10px; 
+  font-weight: 600; 
+  width: 60px;
+  margin: 0; 
+  padding: 0;
 }
+
 .nav-item.active { color: black; }
 
-.nav-add-container { position: relative; top: -20px; }
+.nav-add-container { 
+  position: relative; 
+  top: -20px; /* Fait dépasser le bouton légèrement vers le haut */
+}
 
 .nav-add-btn { 
-  width: 56px; height: 56px; border-radius: 50%; 
-  background: black; border: none; color: white; 
-  display: flex; align-items: center; justify-content: center; 
-  box-shadow: 0 8px 20px rgba(0,0,0,0.25); 
-  cursor: pointer; transition: transform 0.1s; 
+  width: 56px; 
+  height: 56px; 
+  border-radius: 50%; 
+  background: black; 
+  border: none; 
+  color: white; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  box-shadow: 0 8px 20px rgba(0,0,0,0.20); 
+  cursor: pointer; 
+  transition: transform 0.1s; 
 }
+
 .nav-add-btn:active { transform: scale(0.95); }

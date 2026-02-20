@@ -436,16 +436,18 @@ function App() {
   const Layout = isDesktop ? DesktopLayout : MobileLayout;
 
   return (
-    <Layout 
-      activeTab={activeTab} 
-      setActiveTab={setActiveTab} 
-      setShowAddModal={setShowAddModal}
-      setShowCalMenu={setShowCalMenu}
-      showCalMenu={showCalMenu}
-    >
-      {renderView()}
+    <>
+      <Layout 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        setShowAddModal={setShowAddModal}
+        setShowCalMenu={setShowCalMenu}
+        showCalMenu={showCalMenu}
+      >
+        {renderView()}
+      </Layout>
 
-      {/* Modales globales */}
+      {/* --- C'EST ICI LA MAGIE : Les modales sont en DEHORS du Layout --- */}
       {showAddModal && (
         <AddTaskModal 
         onClose={() => setShowAddModal(false)}
@@ -467,7 +469,7 @@ function App() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }
 
