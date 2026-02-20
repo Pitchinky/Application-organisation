@@ -1,88 +1,87 @@
 .all-day-section {
-    padding: 16px 10px;
-    background: #ffffff;
-    border-bottom: 1px solid #F2F2F7;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    
-  }
-  
-  .all-day-section::-webkit-scrollbar { display: none; }
-  
-  .all-day-grid {
-    display: flex;
-    gap: 20px; /* Un peu plus d'espace entre les colonnes */
-    padding-left: 10px;
-  }
-  
-  .all-day-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    min-width: 65px; /* Largeur fixe pour que le texte soit centré */
-    cursor: pointer;
-    transition: transform 0.2s ease;
-  }
-  
-  .all-day-item:active {
-    transform: scale(0.9);
-  }
-  
-  .icon-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .main-pill-icon {
-    width: 48px; /* Belle grosse icône */
-    height: 48px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
-  }
-  
-  .mini-check-badge {
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 2px solid #ffffff;
-    background-color: #D1D1D6; /* Couleur par défaut vide */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-  }
-  
-  .mini-check-badge.active {
-    /* La couleur est gérée par le style inline du JS */
-  }
-  
-  .pill-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #1C1C1E;
-    text-align: center;
-    max-width: 75px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  
-  /* État quand c'est fini */
-  .all-day-item.is-done {
-    opacity: 0.6;
-  }
-  
-  .all-day-item.is-done .pill-label {
-    text-decoration: line-through;
-    color: #8E8E93;
-  }
+  /* Sticky juste en dessous du Header */
+  position: sticky;
+  top: var(--header-height, 120px); /* se colle sous le header quand on scroll */
+  z-index: 99; /* juste en dessous du header (z-index: 100) */
+
+  padding: 16px 10px;
+  background: #ffffff;
+  border-bottom: 1px solid #F2F2F7;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.all-day-section::-webkit-scrollbar { display: none; }
+
+.all-day-grid {
+  display: flex;
+  gap: 20px;
+  padding-left: 10px;
+}
+
+.all-day-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 65px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.all-day-item:active {
+  transform: scale(0.9);
+}
+
+.icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.main-pill-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.mini-check-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background-color: #D1D1D6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.pill-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1C1C1E;
+  text-align: center;
+  max-width: 75px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.all-day-item.is-done {
+  opacity: 0.6;
+}
+
+.all-day-item.is-done .pill-label {
+  text-decoration: line-through;
+  color: #8E8E93;
+}

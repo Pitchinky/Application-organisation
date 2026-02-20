@@ -58,6 +58,14 @@ function App() {
   }, []);
 
   useEffect(() => {
+  const handleResize = () => {
+    document.documentElement.style.setProperty('--safe-bottom', `${window.visualViewport?.height ? '' : 'env(safe-area-inset-bottom, 0px)'}`);
+  };
+  window.addEventListener('resize', handleResize);
+  return () => window.removeEventListener('resize', handleResize);
+}, []);
+
+  useEffect(() => {
     gapi.load("client", async () => {
       await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
       setCompletedEvents(JSON.parse(localStorage.getItem('completed_tasks') || '{}'));

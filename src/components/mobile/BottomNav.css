@@ -1,62 +1,58 @@
 /* src/components/mobile/BottomNav.css */
 .mobile-bottom-nav {
-  position: fixed; 
-  bottom: -20px; 
-  left: 0; 
-  right: 0; 
-  
-  
-  /* On met juste l'espace de sécurité d'Apple, sans ajouter de calc géant */
-  padding-top: 10px; 
-  padding-bottom: max(15px, env(safe-area-inset-bottom));
-  
-  background: rgba(255, 255, 255, 0.95); 
-  backdrop-filter: blur(20px); 
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding-top: 10px;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  padding-bottom: var(--safe-bottom);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(0,0,0,0.05);
-  
-  display: flex; 
-  justify-content: space-around; 
-  
-  /* C'EST ICI LA MAGIE : On centre les icônes pour écraser le vide blanc */
-  align-items: center; 
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;  /* Push icons/text up to reduce perceived height */
   z-index: 9999;
+  box-sizing: border-box;
 }
 
-.nav-item { 
-  background: none; 
-  border: none; 
-  display: flex; 
-  flex-direction: column; 
-  align-items: center; 
-  gap: 4px; 
-  color: #999; 
-  cursor: pointer; 
-  font-size: 10px; 
-  font-weight: 600; 
+.nav-item {
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #999;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
   width: 60px;
-  margin: 0; 
+  margin: 0;
   padding: 0;
 }
 
 .nav-item.active { color: black; }
 
-.nav-add-container { 
-  position: relative; 
-  top: -15px; /* On ajuste le + pour qu'il soit bien proportionné */
+.nav-add-container {
+  position: relative;
+  top: -10px;
 }
 
-.nav-add-btn { 
-  width: 56px; 
-  height: 56px; 
-  border-radius: 50%; 
-  background: black; 
-  border: none; 
-  color: white; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  box-shadow: 0 8px 20px rgba(0,0,0,0.20); 
-  cursor: pointer; 
+.nav-add-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: black;
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.20);
+  cursor: pointer;
 }
 .nav-add-btn:active { transform: scale(0.95); }
