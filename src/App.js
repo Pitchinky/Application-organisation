@@ -329,20 +329,25 @@ useEffect(() => {
       }
   
       let googleId;
-      if (editingEvent) {
-        await gapi.client.calendar.events.patch({
-          calendarId: 'primary',
-          eventId: editingEvent.id,
-          resource: resource
-        });
-        googleId = editingEvent.id;
-      } else {
-        const response = await gapi.client.calendar.events.insert({
-          calendarId: 'primary',
-          resource: resource
-        });
-        googleId = response.result.id;
-      }
+      // Dans createEvent ou ta fonction de modification
+        if (editingEvent) {
+          try {
+            await gapi.client.calendar.events.patch({
+              calendarId: editingEvent.calId || 'primary', // <--- UTILISE L'ID DU CALENDRIER D'ORIGINE
+              eventId: editingEvent.id,
+              resource: resource
+            });
+          } catch (err) {
+            if (err.status === 404) {
+              console.log("Événement introuvable, création d'un nouveau...");
+              // Si l'événement n'existe plus, on le recrée au lieu de planter
+              await gapi.client.calendar.events.insert({
+                calendarId: 'primary',
+                resource: resource
+              });
+            }
+          }
+        }
   
       // Sauvegarde subtasks dans Firebase
       await setDoc(doc(db, "task_details", googleId), {
