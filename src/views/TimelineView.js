@@ -12,39 +12,39 @@ export default function TimelineView({
   now, completedEvents, toggleTaskCompletion, isLoading, forecast, onToggleSubtask, onDeleteEvent, onEditEvent, allDayEvents,
 }) {
   
+  // Génère les données de la timeline (incluant les Gaps/Temps libres)
   const timelineData = processTimeline(events, currentDate);
 
   return (
     <>
-      <div className="timeline-header-sticky">
-        <Header 
-          forecast={forecast}
-          currentDate={currentDate} 
-          setCurrentDate={setCurrentDate}
-          todaySummary={todaySummary} 
-          calendars={calendars}
-          showCalMenu={showCalMenu} 
-          setShowCalMenu={setShowCalMenu}
-          setShowAddModal={setShowAddModal} 
-          isSignedIn={isSignedIn}
-          handleLogin={handleLogin}
-        />
-        <AllDayHeader 
-          events={allDayEvents} 
-          completedEvents={completedEvents} 
-          onToggle={toggleTaskCompletion} 
-        />
-      </div>
+      <Header 
+        forecast={forecast}
+        currentDate={currentDate} 
+        setCurrentDate={setCurrentDate}
+        todaySummary={todaySummary} 
+        calendars={calendars}
+        showCalMenu={showCalMenu} 
+        setShowCalMenu={setShowCalMenu}
+        setShowAddModal={setShowAddModal} 
+        isSignedIn={isSignedIn}
+        handleLogin={handleLogin}
+      />
+
+      {/* 2. AJOUT DU HEADER ALL DAY ICI */}
+      <AllDayHeader events={allDayEvents} completedEvents={completedEvents} 
+  onToggle={toggleTaskCompletion} />
 
       <div className="timeline-area" onClick={() => setShowCalMenu(false)}>
          {isSignedIn ? (
            <div className="timeline-content">
+             {/* Loader pendant la récupération des données */}
              {isLoading && <div className="loader"><div className="spinner"></div></div>}
              
+             {/* Affichage de la Timeline */}
              {!isLoading && timelineData.length > 0 ? timelineData.map((item, i) => (
               <TimelineItem 
                 key={item.id || i} 
-                item={item}
+                item={item} // On passe l'objet item qui contient .data
                 now={now} 
                 completedEvents={completedEvents} 
                 onToggleSubtask={onToggleSubtask}
@@ -54,9 +54,11 @@ export default function TimelineView({
               />
             )) : (!isLoading && <div className="empty-state"><p>Rien de prévu ✨</p></div>)}
              
+             {/* Espace pour ne pas que le dernier item soit caché par la nav */}
              <div className="spacer-bottom"></div>
            </div>
          ) : (
+           /* Écran de connexion si non connecté */
            <div className="login-screen">
              <h1>Bienvenue</h1>
              <p>Connectez votre calendrier pour commencer.</p>
