@@ -1,7 +1,7 @@
 import { differenceInMinutes, startOfDay, endOfDay, parseISO } from 'date-fns';
 
 export const PX_PER_MIN = 0.6;
-export const THRESHOLD_SHORT_EVENT = 50; // Minutes en dessous desquelles c'est un rond
+export const THRESHOLD_SHORT_EVENT = 29; // Minutes en dessous desquelles c'est un rond
 
 export const processTimeline = (events, currentDate) => {
   const timelineItems = [];
