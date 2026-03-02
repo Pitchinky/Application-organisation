@@ -63,10 +63,15 @@ const CATEGORIES = {
     color: '#AF52DE', 
     keywords: ['concert', 'musique', 'festival', 'spectacle','fridge'] 
   },
-  SORTIE: { 
+  BAR: { 
     icon: 'solar:wineglass-triangle-bold', 
     color: '#FF9500', 
     keywords: ['bar', 'biere', 'bière', 'verre', 'apéro', 'apero', 'cocktail'] 
+  },
+  SORTIE: { 
+    icon: 'solar:ticket-bold', 
+    color: '#FF9500', 
+    keywords: ['espace 360', 'sortie'] 
   },
   SOMMEIL: { 
     icon: 'solar:moon-bold', 
