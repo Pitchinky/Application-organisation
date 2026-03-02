@@ -1,0 +1,55 @@
+.simple-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Z-INDEX TRÈS ÉLEVÉ POUR PASSER DEVANT LA MODALE DE MODIF */
+  z-index: 99999; 
+  backdrop-filter: blur(2px);
+}
+
+.simple-popup-card {
+  background: white;
+  width: 85%;
+  max-width: 320px;
+  border-radius: 20px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.simple-popup-card h3 { margin: 0 0 10px 0; font-size: 18px; }
+.simple-popup-card p { color: #666; font-size: 14px; margin-bottom: 20px; }
+
+.simple-popup-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-choice {
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: #F2F2F7;
+  color: #007AFF;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.btn-choice.bold { font-weight: 700; background: #007AFF; color: white; }
+
+.btn-cancel {
+  margin-top: 5px;
+  padding: 10px;
+  background: none;
+  border: none;
+  color: #8E8E93;
+  font-size: 14px;
+  cursor: pointer;
+}

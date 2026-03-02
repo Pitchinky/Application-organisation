@@ -1,0 +1,87 @@
+.delete-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000; /* Toujours au premier plan */
+  padding: 20px;
+}
+
+.delete-modal-card {
+  background: white;
+  width: 100%;
+  max-width: 320px;
+  border-radius: 28px;
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes popIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.delete-icon-circle {
+  width: 64px;
+  height: 64px;
+  background: #FF3B3010;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px auto;
+}
+
+.delete-modal-card h3 {
+  margin: 0 0 10px 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1C1C1E;
+}
+
+.delete-modal-card p {
+  font-size: 15px;
+  color: #8E8E93;
+  line-height: 1.5;
+  margin-bottom: 28px;
+}
+
+.delete-modal-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-confirm-delete {
+  padding: 16px;
+  border-radius: 18px;
+  border: none;
+  background: #FF3B30;
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-confirm-delete:active {
+  transform: scale(0.96);
+}
+
+.btn-cancel-delete {
+  padding: 12px;
+  background: none;
+  border: none;
+  color: #8E8E93;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}

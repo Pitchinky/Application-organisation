@@ -163,7 +163,7 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
                     <button className="menu-item" onClick={(ev) => { ev.stopPropagation(); onEditEvent(e); setShowMenu(false); }}>
                       <Edit2 size={14} /> <span>Modifier</span>
                     </button>
-                    <button className="menu-item delete" onClick={(ev) => { ev.stopPropagation(); onDeleteEvent(e.id); setShowMenu(false); }}>
+                    <button className="menu-item delete" onClick={(ev) => { ev.stopPropagation(); onDeleteEvent(e); setShowMenu(false); }}>
                       <Trash2 size={14} /> <span>Supprimer</span>
                     </button>
                   </div>
