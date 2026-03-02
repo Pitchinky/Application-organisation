@@ -218,30 +218,45 @@ useEffect(() => {
       const end = new Date(currentDate); end.setHours(23,59,59,999);
       
       const promises = selectedCalendarIds.map(async (calId) => {
-        const r = await gapi.client.calendar.events.list({ 
-          'calendarId': calId, 
-          'timeMin': start.toISOString(), 
-          'timeMax': end.toISOString(), 
-          'singleEvents': true, 
-          'orderBy': 'startTime' 
-        });
-        const cal = calendars.find(c => c.id === calId);
-        
-        // POUR CHAQUE ÉVÉNEMENT GOOGLE, ON TENTE DE RÉCUPÉRER LES SUBTASKS
-        const eventsWithFirebase = await Promise.all(r.result.items.map(async (event) => {
-          const docRef = doc(db, "task_details", event.id);
-          const docSnap = await getDoc(docRef);
+        try {
+          const r = await gapi.client.calendar.events.list({ 
+            'calendarId': calId, 
+            'timeMin': start.toISOString(), 
+            'timeMax': end.toISOString(), 
+            'singleEvents': true, 
+            'orderBy': 'startTime' 
+          });
+      
+          const cal = calendars.find(c => c.id === calId);
           
-          return { 
-            ...event, 
-            color: cal?.backgroundColor, 
-            calId: calId,
-            // On ajoute les subtasks si elles existent dans Firebase
-            subtasks: docSnap.exists() ? docSnap.data().subtasks : []
-          };
-        }));
-        
-        return eventsWithFirebase;
+          // Si pas d'items, on retourne un tableau vide pour ce calendrier
+          if (!r.result.items) return [];
+      
+          const eventsWithFirebase = await Promise.all(r.result.items.map(async (event) => {
+            // SÉCURITÉ : On vérifie que l'event possède bien un ID
+            if (!event.id) return { ...event, color: cal?.backgroundColor, calId, subtasks: [] };
+      
+            try {
+              const docRef = doc(db, "task_details", event.id);
+              const docSnap = await getDoc(docRef);
+              
+              return { 
+                ...event, 
+                color: cal?.backgroundColor, 
+                calId: calId,
+                subtasks: docSnap.exists() ? docSnap.data().subtasks : []
+              };
+            } catch (firestoreErr) {
+              console.warn(`Impossible de lire Firebase pour l'event ${event.id}`, firestoreErr);
+              return { ...event, color: cal?.backgroundColor, calId, subtasks: [] };
+            }
+          }));
+          
+          return eventsWithFirebase;
+        } catch (apiErr) {
+          console.error(`Erreur sur le calendrier ${calId}:`, apiErr);
+          return []; // On retourne vide pour ce calendrier précis sans tout faire planter
+        }
       });
   
       const res = await Promise.all(promises);
@@ -330,36 +345,40 @@ useEffect(() => {
   
       let googleId;
       // Dans createEvent ou ta fonction de modification
-        if (editingEvent) {
-          try {
-            await gapi.client.calendar.events.patch({
-              calendarId: editingEvent.calId || 'primary', // <--- UTILISE L'ID DU CALENDRIER D'ORIGINE
-              eventId: editingEvent.id,
-              resource: resource
-            });
-          } catch (err) {
-            if (err.status === 404) {
-              console.log("Événement introuvable, création d'un nouveau...");
-              // Si l'événement n'existe plus, on le recrée au lieu de planter
-              await gapi.client.calendar.events.insert({
-                calendarId: 'primary',
-                resource: resource
-              });
-            }
-          }
-        }
+      if (editingEvent) {
+        await gapi.client.calendar.events.patch({
+          calendarId: editingEvent.calId || 'primary',
+          eventId: editingEvent.id,
+          resource: resource
+        });
+        googleId = editingEvent.id;
+      } else {
+        const response = await gapi.client.calendar.events.insert({
+          calendarId: 'primary',
+          resource: resource
+        });
+        // SÉCURITÉ : On vérifie l'existence de l'ID renvoyé par Google
+        googleId = response.result.id;
+      }
   
-      // Sauvegarde subtasks dans Firebase
-      await setDoc(doc(db, "task_details", googleId), {
-        subtasks: taskData.subtasks,
+      // --- LA CORRECTION EST ICI ---
+      if (!googleId) {
+        throw new Error("L'ID Google n'a pas pu être généré.");
+      }
+  
+      // On utilise une constante propre pour Firebase
+      const docRef = doc(db, "task_details", String(googleId)); 
+      
+      await setDoc(docRef, {
+        subtasks: taskData.subtasks || [],
         updatedAt: new Date().toISOString()
       });
   
       closeAddModal();
       setTimeout(fetchAllEvents, 500);
     } catch (e) {
-      console.error(e);
-      alert("Erreur lors de la sauvegarde");
+      console.error("Erreur détaillée :", e);
+      alert("Erreur lors de la sauvegarde : " + e.message);
     }
   };
 
