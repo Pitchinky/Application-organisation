@@ -17,7 +17,7 @@ const CATEGORIES = {
     keywords: ['equitation', 'équitation', 'cheval', 'poney'] 
   },
   REPAS: { 
-    icon: 'fa6-solid:utensils', 
+    icon: 'fluent:food-20-filled', 
     color: '#636366', // Gris
     keywords: ['manger', 'resto', 'diner', 'repas', 'déjeuner', 'lunch', 'midi', 'dîner'] 
   },

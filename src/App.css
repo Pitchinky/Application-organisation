@@ -89,3 +89,15 @@ body {
 .input-wrap label { font-size: 10px; text-transform: uppercase; font-weight: 700; color: #8E8E93; margin-bottom: 2px; }
 .input-wrap input { background: transparent; border: none; font-size: 16px; font-weight: 600; padding: 0; width: 100%; outline: none; }
 .btn-save { width: 100%; padding: 16px; background: #000000; color: white; border: none; border-radius: 18px; font-size: 17px; font-weight: 700; cursor: pointer; margin-top: 5px; }
+
+/* Empêche le zoom sur iOS pour tous les champs de saisie */
+input, 
+textarea, 
+select {
+  font-size: 16px !important;
+}
+
+/* Si tu as une classe spécifique pour l'input des sous-tâches, vérifie sa taille */
+.subtask-input {
+  font-size: 16px;
+}
