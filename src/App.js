@@ -36,7 +36,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('timeline');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [now, setNow] = useState(new Date()); 
-  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [isSignedIn, setIsSignedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [isLoading, setIsLoading] = useState(false);
   const [showCalMenu, setShowCalMenu] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -75,22 +75,26 @@ function App() {
       if (token && expiry && Date.now() < parseInt(expiry)) {
         gapi.client.setToken({ access_token: token });
         setIsSignedIn(true);
+        localStorage.setItem('isLoggedIn', 'true');
         loadData();
       }
     });
 
     
+
     
+    
+    // Dans ton useEffect, remplace la fonction initClient par celle-ci :
     const initClient = () => {
       if (window.google && window.google.accounts) {
         setTokenClient(window.google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID, scope: SCOPES, prompt: 'consent', // <--- Force l'affichage des cases à cocher
-          access_type: 'offline', // <--- Permet de rester connecté plus longtemps
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          // prompt: 'consent' <-- SUPPRIME CETTE LIGNE ou mets prompt: ''
+          // access_type: 'offline' <-- Optionnel en SPA pure, mais ne gêne pas
           callback: (resp) => {
             if (resp.access_token) {
-              const expiresIn = (resp.expires_in || 3599) * 1000;
-              localStorage.setItem('g_token', resp.access_token);
-              localStorage.setItem('g_expiry', Date.now() + expiresIn);
+              saveToken(resp);
               setIsSignedIn(true);
               loadData();
             }
@@ -99,6 +103,19 @@ function App() {
       } else { setTimeout(initClient, 500); }
     };
     initClient();
+
+    // Ajoute cette fonction utilitaire dans ton composant App
+    const saveToken = (resp) => {
+      const expiresIn = (resp.expires_in || 3599) * 1000;
+      const expiryTime = Date.now() + expiresIn;
+      
+      localStorage.setItem('g_token', resp.access_token);
+      localStorage.setItem('g_expiry', expiryTime);
+      localStorage.setItem('isLoggedIn', 'true');
+      
+      // On injecte le token dans le client GAPI pour les appels suivants
+      gapi.client.setToken({ access_token: resp.access_token });
+    };
 
     if (WEATHER_KEY) {
        navigator.geolocation.getCurrentPosition(async (pos) => {
@@ -145,6 +162,30 @@ useEffect(() => {
       })
       .catch(err => console.log('failed: ', err));
   }, []);
+
+  useEffect(() => {
+    const checkAndRefreshToken = () => {
+      const token = localStorage.getItem('g_token');
+      const expiry = localStorage.getItem('g_expiry');
+  
+      if (token && expiry) {
+        const timeLeft = parseInt(expiry) - Date.now();
+  
+        // Si le token expire dans moins de 5 minutes (300 000 ms)
+        if (timeLeft < 300000) {
+          console.log("Token sur le point d'expirer, rafraîchissement silencieux...");
+          if (tokenClient) {
+            // La magie est là : prompt: 'none' demande le token sans popup
+            tokenClient.requestAccessToken({ prompt: 'none' });
+          }
+        }
+      }
+    };
+  
+    // On vérifie toutes les 5 minutes
+    const interval = setInterval(checkAndRefreshToken, 300000);
+    return () => clearInterval(interval);
+  }, [tokenClient]);
 
   useEffect(() => {
     const checkInterval = setInterval(() => {
