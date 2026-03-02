@@ -12,7 +12,7 @@ const CATEGORIES = {
     keywords: ['trajet', 'voiture', 'route', 'conduite', 'aller'] 
   },
   EQUITATION: { 
-    icon: 'solar:horse-bold', 
+    icon: 'fa7-solid:horse-head', 
     color: '#D2691E', // Orange cuivré / Terre
     keywords: ['equitation', 'équitation', 'cheval', 'poney'] 
   },
