@@ -75,7 +75,8 @@ function App() {
     const initClient = () => {
       if (window.google && window.google.accounts) {
         setTokenClient(window.google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID, scope: SCOPES,
+          client_id: CLIENT_ID, scope: SCOPES, prompt: 'consent', // <--- Force l'affichage des cases à cocher
+          access_type: 'offline', // <--- Permet de rester connecté plus longtemps
           callback: (resp) => {
             if (resp.access_token) {
               const expiresIn = (resp.expires_in || 3599) * 1000;
