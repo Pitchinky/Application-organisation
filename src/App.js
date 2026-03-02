@@ -358,86 +358,82 @@ useEffect(() => {
     if (!taskData.title) return;
   
     try {
-      let start, end, resource;
+      let resource = {
+        summary: taskData.title,
+        // GESTION DE LA RÉCURRENCE À LA CRÉATION
+        recurrence: taskData.repeat && taskData.repeat !== 'none' 
+          ? [`RRULE:FREQ=${taskData.repeat.toUpperCase()}`] 
+          : []
+      };
   
       if (taskData.allDay) {
-        // --- CAS ALL DAY ---
-        // On formate la date en YYYY-MM-DD (format requis par Google pour All Day)
         const dateString = format(taskData.date, 'yyyy-MM-dd');
-        
-        resource = {
-          summary: taskData.title,
-          start: { date: dateString },
-          end: { date: dateString } // Pour une seule journée, start et end sont identiques
-        };
+        resource.start = { date: dateString };
+        resource.end = { date: dateString };
       } else {
-        // --- CAS CHRONOLOGIQUE (Heure précise) ---
         const [h, m] = taskData.time.split(':');
         const startDate = new Date(taskData.date);
         startDate.setHours(parseInt(h), parseInt(m), 0);
         const endDate = new Date(startDate.getTime() + taskData.duration * 60000);
-  
-        resource = {
-          summary: taskData.title,
-          start: { dateTime: startDate.toISOString() },
-          end: { dateTime: endDate.toISOString() }
-        };
+        resource.start = { dateTime: startDate.toISOString() };
+        resource.end = { dateTime: endDate.toISOString() };
       }
   
       let googleId;
-      // Dans createEvent ou ta fonction de modification
       if (editingEvent) {
-        await gapi.client.calendar.events.patch({
+        // --- MODIFICATION ---
+        const isRecurring = editingEvent.recurringEventId;
+        let modType = 'this';
+        
+        if (isRecurring) {
+          const choice = window.confirm("Modifier toute la série ? (Annuler = seulement cette tâche)");
+          modType = choice ? 'all' : 'this';
+        }
+
+        const response = await gapi.client.calendar.events.patch({
           calendarId: editingEvent.calId || 'primary',
-          eventId: editingEvent.id,
+          eventId: (modType === 'all' && isRecurring) ? editingEvent.recurringEventId : editingEvent.id,
           resource: resource
         });
-        googleId = editingEvent.id;
+        googleId = response.result.id;
       } else {
+        // --- CRÉATION ---
         const response = await gapi.client.calendar.events.insert({
           calendarId: 'primary',
           resource: resource
         });
-        // SÉCURITÉ : On vérifie l'existence de l'ID renvoyé par Google
         googleId = response.result.id;
       }
   
-      // --- LA CORRECTION EST ICI ---
-      if (!googleId) {
-        throw new Error("L'ID Google n'a pas pu être généré.");
-      }
+      if (!googleId) throw new Error("Erreur ID Google");
   
-      // On utilise une constante propre pour Firebase
+      // Firebase (toujours lié à l'instance pour les sous-tâches)
       const docRef = doc(db, "task_details", String(googleId)); 
-      
-      await setDoc(docRef, {
-        subtasks: taskData.subtasks || [],
-        updatedAt: new Date().toISOString()
-      });
+      await setDoc(docRef, { subtasks: taskData.subtasks || [], updatedAt: new Date().toISOString() }, { merge: true });
   
       closeAddModal();
       setTimeout(fetchAllEvents, 500);
     } catch (e) {
-      console.error("Erreur détaillée :", e);
-      alert("Erreur lors de la sauvegarde : " + e.message);
+      console.error("Erreur sauvegarde :", e);
     }
   };
 
   // SUPPRIMER UNE TÂCHE
-  const handleDeleteEvent = async (eventId) => {
-    if (!window.confirm("Supprimer cette tâche ?")) return;
+  const handleDeleteEvent = async (event) => {
+    const isRecurring = event.recurringEventId;
+    let deleteType = 'this';
+
+    if (isRecurring) {
+      const choice = window.confirm("Supprimer toute la série ? (Annuler = seulement cette tâche)");
+      deleteType = choice ? 'all' : 'this';
+    }
 
     try {
-      // 1. Supprimer sur Google Calendar
       await gapi.client.calendar.events.delete({
-        calendarId: 'primary',
-        eventId: eventId,
+        calendarId: event.calId || 'primary',
+        eventId: (deleteType === 'all' && isRecurring) ? event.recurringEventId : event.id,
       });
-
-      // 2. Supprimer les sous-tâches sur Firebase
-      await deleteDoc(doc(db, "task_details", eventId));
-
-      // 3. Rafraîchir l'interface
+      await deleteDoc(doc(db, "task_details", event.id));
       fetchAllEvents();
     } catch (error) {
       console.error("Erreur suppression:", error);
