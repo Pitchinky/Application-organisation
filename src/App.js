@@ -58,6 +58,14 @@ function App() {
   }, []);
 
   useEffect(() => {
+  const handleResize = () => {
+    document.documentElement.style.setProperty('--safe-bottom', `${window.visualViewport?.height ? '' : 'env(safe-area-inset-bottom, 0px)'}`);
+  };
+  window.addEventListener('resize', handleResize);
+  return () => window.removeEventListener('resize', handleResize);
+}, []);
+
+  useEffect(() => {
     gapi.load("client", async () => {
       await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
       setCompletedEvents(JSON.parse(localStorage.getItem('completed_tasks') || '{}'));
@@ -105,30 +113,36 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
+    // TA LIGNE MAGIQUE : On annule tout si on n'est pas en HTTPS (réseau local)
+    if (!('serviceWorker' in navigator)) {
+      console.log("Service Worker non disponible (Réseau local bloqué par iOS)");
+      return; 
+    }
+
     // 1. Demander le token et l'ENREGISTRER
-    requestForToken().then(async (token) => {
-      if (token) {
-        // On sauvegarde le token dans Firestore pour pouvoir envoyer des messages après
-        // "mon_profil" est un ID arbitraire ici, tu pourras le rendre dynamique plus tard
-        try {
-          await setDoc(doc(db, "users", "mon_profil"), {
-            fcmToken: token,
-            lastActive: new Date()
-          }, { merge: true });
-          console.log("Token sauvegardé en base !");
-        } catch (error) {
-          console.error("Erreur sauvegarde token :", error);
+    requestForToken()
+      .then(async (token) => {
+        if (token) {
+          try {
+            await setDoc(doc(db, "users", "mon_profil"), {
+              fcmToken: token,
+              lastActive: new Date()
+            }, { merge: true });
+            console.log("Token sauvegardé en base !");
+          } catch (error) {
+            console.error("Erreur sauvegarde token :", error);
+          }
         }
-      }
-    });
+      })
+      .catch(err => console.log("Erreur token :", err));
   
-    // 2. Écouter les notifications "In-App"
-    onMessageListener().then(payload => {
-      console.log("Notification reçue en direct :", payload);
-      // Au lieu d'une alerte moche, on peut juste log ou faire un petit toast
-      alert(`${payload.notification.title}: ${payload.notification.body}`);
-    }).catch(err => console.log('failed: ', err));
+    // 2. Écouter les notifications
+    onMessageListener()
+      .then(payload => {
+        alert(`${payload.notification.title}: ${payload.notification.body}`);
+      })
+      .catch(err => console.log('failed: ', err));
   }, []);
 
   useEffect(() => {
@@ -437,16 +451,18 @@ function App() {
   const Layout = isDesktop ? DesktopLayout : MobileLayout;
 
   return (
-    <Layout 
-      activeTab={activeTab} 
-      setActiveTab={setActiveTab} 
-      setShowAddModal={setShowAddModal}
-      setShowCalMenu={setShowCalMenu}
-      showCalMenu={showCalMenu}
-    >
-      {renderView()}
+    <>
+      <Layout 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        setShowAddModal={setShowAddModal}
+        setShowCalMenu={setShowCalMenu}
+        showCalMenu={showCalMenu}
+      >
+        {renderView()}
+      </Layout>
 
-      {/* Modales globales */}
+      {/* --- C'EST ICI LA MAGIE : Les modales sont en DEHORS du Layout --- */}
       {showAddModal && (
         <AddTaskModal 
         onClose={() => setShowAddModal(false)}
@@ -468,7 +484,7 @@ function App() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }
 

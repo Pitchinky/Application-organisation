@@ -20,10 +20,14 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
 // Ajout du Messaging
-export const messaging = getMessaging(app);
+// On ne lance la messagerie que si Apple l'autorise
+export const messaging = (typeof window !== 'undefined' && 'serviceWorker' in navigator) 
+  ? getMessaging(app) 
+  : null;
 
 // Fonction pour demander la permission et récupérer le Token
 export const requestForToken = () => {
+  if (!messaging) return null;
   return getToken(messaging, { vapidKey: 'BKfanQvdHFWrraZIjoUGC8OkYOfijrUhSGWQBL9GrjXwiglMBpCtxKXpaKuBYWLk1svlXh1IsX_DEtEJquwZfxg' })
     .then((currentToken) => {
       if (currentToken) {
@@ -42,6 +46,7 @@ export const requestForToken = () => {
 // Écouter les messages quand l'app est OUVERTE
 export const onMessageListener = () =>
   new Promise((resolve) => {
+    if (!messaging) return;
     onMessage(messaging, (payload) => {
       resolve(payload);
     });

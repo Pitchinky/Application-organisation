@@ -8,105 +8,78 @@
   --accent: #FF2D55;
   --divider: #F2F2F7;
   --sidebar-bg: #F5F5F7;
-  --nav-height: 85px; 
+  --header-height: 120px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --nav-content-height: 52px;  /* Adjusted: Icons ~24px + gap 4px + text ~12px + effective add button 56px -10px shift ~42px max */
+  --nav-height: calc(var(--nav-content-height) + 10px);  /* + padding-top */
+  --nav-total: calc(var(--nav-height) + var(--safe-bottom));
 }
 
-* { 
-  box-sizing: border-box; 
-  -webkit-tap-highlight-color: transparent; 
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
-html { 
-  height: 100%; 
-  overscroll-behavior-y: none; 
+html {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--bg-app);
 }
 
 body {
-  margin: 0; 
-  padding: 0;
-  font-family: 'Inter', -apple-system, sans-serif;
-  background-color: var(--bg-app);
-  color: var(--text-main);
-  height: 100%; 
-  width: 100%; 
-  /* Changement ici pour éviter les bugs de scroll sur iOS */
-  position: fixed; 
+  width: 100%;
+  min-height: calc(100dvh + var(--safe-top));  /* Fix for iOS white bar/gaps */
+  height: auto;  /* Allow growth if needed */
+  margin: 0;
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);  /* Full safe area paddings */
   overflow: hidden;
+  background-color: var(--bg-app);
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--text-main);
 }
 
+#root {
+  width: 100%;
+  min-height: 100dvh;  /* Use min-height for flexibility */
+  overflow: hidden;
+  background-color: var(--bg-app);
+}
+
+/* Structure Globale */
 .layout-wrapper { 
-  display: flex; 
-  height: 100dvh; 
-  width: 100vw; 
-  overflow: hidden; 
-  background: var(--bg-app);
-  
-  /* C'EST CETTE LIGNE QUI RÈGLE TON PROBLÈME */
-  /* Elle force l'app à descendre SOUS la Dynamic Island/Encoche */
-  padding-top: env(safe-area-inset-top);
-  
-  /* On protège aussi le bas pour la barre de l'iPhone */
-  padding-bottom: env(safe-area-inset-bottom);
+  display: flex; height: 100dvh; width: 100vw; 
+  overflow: hidden; background: var(--bg-app);
 }
 
-.layout-wrapper.mobile { 
-  flex-direction: column; 
-}
-
-/* Dans App.css */
+.layout-wrapper.mobile { flex-direction: column; }
 .mobile-content-container { 
-  flex: 1; 
-  overflow-y: auto; 
-  -webkit-overflow-scrolling: touch; 
-  /* Force un grand espace vide en bas pour pouvoir scroller au-dessus du gros bouton + */
-  padding-bottom: 120px; 
-  position: relative; 
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; 
+  padding-bottom: calc(var(--nav-total) + 40px);; position: relative; 
 }
 
-.layout-wrapper.desktop { 
-  flex-direction: row; 
-}
-
+.layout-wrapper.desktop { flex-direction: row; }
 .desktop-main-content { 
-  flex: 1; 
-  height: 100%; 
-  overflow-y: auto; 
-  position: relative; 
-  background: white; 
+  flex: 1; height: 100%; overflow-y: auto; position: relative; background: white; 
 }
 
-/* Modale */
+/* Modale (Utilisée un peu partout, on la laisse ici ou on fait un Modal.css) */
 .modal-backdrop { 
-    position: fixed; 
-    top: 0; left: 0; right: 0; bottom: 0; 
-    background: rgba(0,0,0,0.3); 
-    backdrop-filter: blur(8px);
-    z-index: 20000; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center;
-    /* On s'assure que la modale n'est pas coupée par les bords */
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+    background: rgba(0,0,0,0.3); backdrop-filter: blur(8px);
+    z-index: 20000; display: flex; align-items: center; justify-content: center;
 }
-
 .modal-sheet { 
-    background: white; 
-    width: 90%; /* Un peu plus large sur mobile */
-    max-width: 340px; 
-    border-radius: 28px; 
-    padding: 24px; 
-    box-shadow: 0 20px 50px rgba(0,0,0,0.25); 
-    display: flex; 
-    flex-direction: column; 
-    gap: 20px;
+    background: white; width: 85%; max-width: 320px; border-radius: 28px; padding: 24px; 
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 20px;
     animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-
-@keyframes popIn { 
-  from { opacity: 0; transform: scale(0.9); } 
-  to { opacity: 1; transform: scale(1); } 
-}
-
+@keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
 .modal-header h2 { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
 .close-icon { background: #F2F2F7; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #8E8E93; cursor: pointer; }
