@@ -7,7 +7,7 @@ const CATEGORIES = {
     keywords: ['thales', 'travail', 'réunion', 'bureau'] 
   },
   TRANSPORT: { 
-    icon: 'solar:car-bold', 
+    icon: 'boxicons:car-filled', 
     color: '#5856D6', 
     keywords: ['trajet', 'voiture', 'route', 'conduite', 'aller'] 
   },
