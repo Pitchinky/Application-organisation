@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { format, parseISO } from 'date-fns';
+import React, { useState } from 'react';
+import { format, parseISO, isWithinInterval } from 'date-fns';
 import { Icon } from '@iconify/react';
 import { getCategoryData } from '../../utils/categoryLogic';
 import { getEventStatus, THRESHOLD_SHORT_EVENT, formatDuration } from '../../utils/timelineLogic';
@@ -10,28 +10,40 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
 
   const [showMenu, setShowMenu] = useState(false);
   
+  // Formatage de l'heure actuelle pour l'afficher à côté de la ligne
+  const nowTimeStr = format(now, 'HH:mm');
+
+  // --- LOGIQUE POUR LA LIGNE ROUGE DANS LES GAPS ---
+  const isNowInGap = item.type === 'gap' && isWithinInterval(now, { start: item.start, end: item.end });
+  const gapProgress = isNowInGap ? ((now - item.start) / (item.end - item.start)) * 100 : 0;
+
   if (item.type === 'gap') {
     const showLabel = item.duration >= 15;
     const gapHeight = Math.max(item.height, 20);
-    
-    // On récupère l'heure du début du trou pour le bouton +
     const gapStartTime = format(item.start, 'HH:mm');
   
     return (
-      <div className="timeline-gap" style={{ height: `${gapHeight}px` }}>
+      <div className="timeline-gap" style={{ height: `${gapHeight}px`, position: 'relative' }}>
         <div className="gap-line"></div>
+        
+        {isNowInGap && (
+          <div className="now-indicator-row" style={{ top: `${gapProgress}%` }}>
+            <span className="now-time-label">{nowTimeStr}</span>
+            <div className="now-dot" />
+            <div className="now-line" />
+          </div>
+        )}
+
         {showLabel && (
           <div className="gap-label">
             <span className="gap-dots">•••</span>
             <span>{formatDuration(item.duration)} de libre</span>
-            
-            {/* LE PETIT BOUTON PLUS */}
             <button 
               className="gap-add-btn"
               onClick={() => onEditEvent({ 
                 isNewFromGap: true, 
                 startTime: gapStartTime,
-                gapDuration: item.duration // On passe la durée du trou ici
+                gapDuration: item.duration 
               })}
             >
               <Plus size={14} />
@@ -42,7 +54,6 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
     );
   }
 
-  
   const e = item.data;
   if (!e || !e.summary) return null;
 
@@ -56,11 +67,10 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
   const isPast = status === 'past' || checked;
   const isShort = item.duration <= THRESHOLD_SHORT_EVENT;
   
-  // Ajustement de la hauteur visuelle si présence de sous-tâches
   const hasSubtasks = e.subtasks && e.subtasks.length > 0;
   const visualHeight = isShort ? 50 : Math.max(item.height, hasSubtasks ? 80 : 50);
 
-  // --- LOGIQUE DE STYLE ---
+  // --- LOGIQUE DE STYLE (CONSERVÉE) ---
   let pillStyle = {};
   let iconColor = "white";
 
@@ -86,13 +96,20 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
     setShowMenu(!showMenu);
   };
 
-  
-
   return (
     <div className={`timeline-row ${isPast ? 'past' : ''} ${isCur ? 'current' : ''}`} 
-         style={{ minHeight: `${visualHeight}px`, height: 'auto', paddingBottom: hasSubtasks ? '15px' : '0', zIndex: showMenu ? 100 : 1 }}
+         style={{ minHeight: `${visualHeight}px`, height: 'auto', paddingBottom: hasSubtasks ? '15px' : '0', zIndex: showMenu ? 100 : 1, position: 'relative' }}
          >
        
+       {/* LIGNE ROUGE DANS LA TÂCHE */}
+       {isCur && (
+          <div className="now-indicator-row" style={{ top: `${progress}%`, zIndex: 10 }}>
+            <span className="now-time-label" style={{ color: '#ff3b30' }}>{nowTimeStr}</span>
+            <div className="now-dot" />
+            <div className="now-line" />
+          </div>
+       )}
+
        <div className="time-column">
          <span className="time-start">{format(start, 'HH:mm')}</span>
          {!isShort && <span className="time-end">{format(end, 'HH:mm')}</span>}
@@ -113,14 +130,13 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
        
         <div className="card-column">
          <div className="event-card-transparent">
-
           <div className="card-text" onClick={() => toggleTaskCompletion(e.id)}>
             {isCur && !checked && (
               <span className="status-label" style={{color: catColor}}>{Math.round(100 - progress)}% restant</span>
             )}
             <h3 style={{ textDecoration: checked ? 'line-through' : 'none' }}>
-        {e.summary}
-      </h3>
+              {e.summary}
+            </h3>
             {e.location && !isShort && <p className="location">{e.location}</p>}
 
             {hasSubtasks && !isShort && (
@@ -130,7 +146,7 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
                       key={sub.id || idx} 
                       className="subtask-item"
                       onClick={(event) => {
-                        event.stopPropagation(); // Empêche de cocher la tâche parente
+                        event.stopPropagation();
                         onToggleSubtask(e.id, e.subtasks, sub.id);
                       }}
                     >
@@ -146,7 +162,6 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
               </div>
             )}
           </div>
-             
             
           <div className="card-actions-right">
             <div className="options-container">
@@ -156,9 +171,7 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
 
               {showMenu && (
                 <>
-                  {/* Ce calque invisible ferme le menu au clic n'importe où ailleurs */}
                   <div className="menu-backdrop" onClick={() => setShowMenu(false)} />
-                  
                   <div className="options-menu">
                     <button className="menu-item" onClick={(ev) => { ev.stopPropagation(); onEditEvent(e); setShowMenu(false); }}>
                       <Edit2 size={14} /> <span>Modifier</span>
@@ -181,16 +194,8 @@ export default function TimelineItem({ item, now, completedEvents, toggleTaskCom
               {checked && <Icon icon="ph:check-bold" color="white" width="14" />}
             </div>
           </div>
-              
-              
-
-  
-           
-           
-           
          </div>
         </div>
-
     </div>
   );
 }

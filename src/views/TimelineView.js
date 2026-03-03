@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import Header from '../components/shared/Header';
 import TimelineItem from '../components/shared/TimelineItem';
 import { processTimeline } from '../utils/timelineLogic';
 import AllDayHeader from '../components/shared/AllDayHeader';
+import { isWithinInterval, parseISO, isSameDay } from 'date-fns';
 
 import './TimelineView.css';
 
@@ -12,8 +13,34 @@ export default function TimelineView({
   now, completedEvents, toggleTaskCompletion, isLoading, forecast, onToggleSubtask, onDeleteEvent, onEditEvent, allDayEvents,
 }) {
   
-  // Génère les données de la timeline (incluant les Gaps/Temps libres)
+  // Référence vers la zone de scroll
+  const scrollContainerRef = useRef(null);
+
+  // Génère les données de la timeline
   const timelineData = processTimeline(events, currentDate);
+  const isToday = isSameDay(currentDate, new Date());
+
+  // --- LOGIQUE AUTO-SCROLL ---
+  useEffect(() => {
+    // On ne scrolle que si on est sur "Aujourd'hui" et que le chargement est fini
+    if (isSignedIn && isToday && !isLoading && timelineData.length > 0) {
+      
+      // On attend un tout petit peu que le DOM soit bien rendu
+      const timer = setTimeout(() => {
+        // On cherche l'élément qui contient la ligne rouge
+        const activeElement = document.querySelector('.now-indicator-row');
+        
+        if (activeElement) {
+          activeElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center', // Place la ligne pile au milieu de l'écran
+          });
+        }
+      }, 500); // 500ms de délai pour la fluidité
+
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, currentDate, isSignedIn, isToday]);
 
   return (
     <>
@@ -30,21 +57,26 @@ export default function TimelineView({
         handleLogin={handleLogin}
       />
 
-      {/* 2. AJOUT DU HEADER ALL DAY ICI */}
-      <AllDayHeader events={allDayEvents} completedEvents={completedEvents} 
-  onToggle={toggleTaskCompletion} />
+      <AllDayHeader 
+        events={allDayEvents} 
+        completedEvents={completedEvents} 
+        onToggle={toggleTaskCompletion} 
+      />
 
-      <div className="timeline-area" onClick={() => setShowCalMenu(false)}>
+      {/* On ajoute la ref ici sur la zone qui scrolle */}
+      <div 
+        className="timeline-area" 
+        ref={scrollContainerRef}
+        onClick={() => setShowCalMenu(false)}
+      >
          {isSignedIn ? (
            <div className="timeline-content">
-             {/* Loader pendant la récupération des données */}
              {isLoading && <div className="loader"><div className="spinner"></div></div>}
              
-             {/* Affichage de la Timeline */}
              {!isLoading && timelineData.length > 0 ? timelineData.map((item, i) => (
               <TimelineItem 
                 key={item.id || i} 
-                item={item} // On passe l'objet item qui contient .data
+                item={item}
                 now={now} 
                 completedEvents={completedEvents} 
                 onToggleSubtask={onToggleSubtask}
@@ -54,11 +86,9 @@ export default function TimelineView({
               />
             )) : (!isLoading && <div className="empty-state"><p>Rien de prévu ✨</p></div>)}
              
-             {/* Espace pour ne pas que le dernier item soit caché par la nav */}
              <div className="spacer-bottom"></div>
            </div>
          ) : (
-           /* Écran de connexion si non connecté */
            <div className="login-screen">
              <h1>Bienvenue</h1>
              <p>Connectez votre calendrier pour commencer.</p>
