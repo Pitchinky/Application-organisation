@@ -52,70 +52,92 @@ function App() {
   const [newTaskDuration, setNewTaskDuration] = useState(60);
   const [editingEvent, setEditingEvent] = useState(null);
   const [gapiReady, setGapiReady] = useState(false);
+  const [tokenClient, setTokenClient] = useState(null); // Pour le rafraîchissement automatique
 
   // ÉTAT POPUPS
   const [recModal, setRecModal] = useState({ isOpen: false, type: 'edit', data: null });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, event: null });
 
-  // --- CONNEXION GOOGLE CORRIGÉE ---
+  // --- LOGIQUE DE CONNEXION RÉPARÉE (SESSION LONGUE) ---
+
+  const saveToken = useCallback((token, expiresIn) => {
+    const expiry = Date.now() + (expiresIn || 3599) * 1000;
+    localStorage.setItem('g_token', token);
+    localStorage.setItem('g_expiry', expiry);
+    gapi.client.setToken({ access_token: token });
+  }, []);
+
+  // Surveille l'état de Firebase + Rafraîchissement silencieux Google
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setIsSignedIn(true);
-        
-        // 1. ON NE PREND PAS user.accessToken ici !
-        // On récupère le "vrai" jeton Google qu'on a stocké lors du login
         const savedToken = localStorage.getItem('g_token');
-        
-        if (savedToken) {
+        const expiry = localStorage.getItem('g_expiry');
+
+        // Si le token Google est expiré ou va expirer dans moins de 5 min
+        if (!savedToken || (expiry && Date.now() >= (parseInt(expiry) - 300000))) {
+          if (tokenClient) {
+            console.log("🔄 Rafraîchissement silencieux du token Google...");
+            tokenClient.requestAccessToken({ prompt: 'none', login_hint: user.email });
+          }
+        } else {
           gapi.client.setToken({ access_token: savedToken });
           if (gapiReady) loadData();
         }
       } else {
         setIsSignedIn(false);
         localStorage.removeItem('g_token');
+        localStorage.removeItem('g_expiry');
       }
     });
     return () => unsubscribe();
-  }, [gapiReady]);
+  }, [gapiReady, tokenClient]);
 
   const handleLogin = async () => {
     try {
-      const result = await signInWithPopup(auth, provider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const token = credential.accessToken;
-
-      if (token) {
-        localStorage.setItem('g_token', token);
-        gapi.client.setToken({ access_token: token });
-        setIsSignedIn(true);
-        loadData();
+      // 1. On connecte Firebase (session longue)
+      await signInWithPopup(auth, provider);
+      
+      // 2. On demande le jeton Google Calendar
+      if (tokenClient) {
+        tokenClient.requestAccessToken({ prompt: 'select_account' });
       }
     } catch (error) {
-      console.error("Erreur login Google:", error);
+      console.error("Erreur login:", error);
     }
   };
 
-  // --- INITIALISATION GAPI ---
+  // --- INITIALISATION GAPI + GOOGLE IDENTITY SERVICES ---
   useEffect(() => {
-    const startGapi = async () => {
+    const startAuth = async () => {
+      // Initialise GAPI
       await gapi.load("client", async () => {
         try {
-          await gapi.client.init({ 
-            apiKey: API_KEY, 
-            clientId: CLIENT_ID,
-            discoveryDocs: [DISCOVERY_DOC],
-            scope: SCOPES 
-          });
-          await gapi.client.load('calendar', 'v3');   // ← Important
+          await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
+          await gapi.client.load('calendar', 'v3');
           setGapiReady(true);
-        } catch (e) {
-          console.error("Erreur GAPI Init:", e);
-        }
+        } catch (e) { console.error("GAPI Init Error:", e); }
       });
-    };
-    startGapi();
 
+      // Initialise le TokenClient (nécessaire pour le refresh silencieux)
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (resp) => {
+          if (resp.access_token) {
+            saveToken(resp.access_token, resp.expires_in);
+            setIsSignedIn(true);
+            loadData();
+          }
+        },
+      });
+      setTokenClient(client);
+    };
+
+    startAuth();
+
+    // Météo & Timer
     if (WEATHER_KEY) {
       navigator.geolocation.getCurrentPosition(async (pos) => {
         try {
@@ -127,24 +149,24 @@ function App() {
     }
 
     const timer = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
+    const handleResize = () => setIsDesktop(window.innerWidth > 768);
+    window.addEventListener('resize', handleResize);
 
-  // --- LOGIQUE API (inchangée sauf sécurité token) ---
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [saveToken]);
+
+  // --- LOGIQUE API (Inchangée) ---
   const loadData = async () => {
-    const token = localStorage.getItem('g_token');
-    if (!token) return;
-
-    gapi.client.setToken({ access_token: token });
-
     try { 
       const r = await gapi.client.calendar.calendarList.list(); 
       setCalendars(r.result.items); 
       setSelectedCalendarIds(r.result.items.map(c => c.id));
     } catch(e) {
-      console.error("Erreur calendrier:", e);
-      if (e.status === 401 || e.status === 403) {
-        setIsSignedIn(false);
+      if (e.status === 401 && tokenClient && auth.currentUser) {
+        tokenClient.requestAccessToken({ prompt: 'none', login_hint: auth.currentUser.email });
       }
     } 
   };
@@ -183,53 +205,31 @@ function App() {
       setEvents(res.flat().sort((a, b) => 
         new Date(a.start.dateTime || a.start.date) - new Date(b.start.dateTime || b.start.date)
       ));
-    } catch(e) {
-      console.error(e);
-      if (e.status === 401) setIsSignedIn(false);
-    } finally { 
-      setIsLoading(false); 
-    }
+    } catch(e) { console.error(e); } finally { setIsLoading(false); }
   }, [currentDate, selectedCalendarIds, isSignedIn, calendars]);
 
   useEffect(() => { 
     if (isSignedIn && gapiReady) fetchAllEvents(); 
   }, [fetchAllEvents, isSignedIn, gapiReady]);
 
-  // --- TOUTES TES AUTRES FONCTIONS (inchangées) ---
+  // --- ACTIONS (Inchangées) ---
   const handleToggleSubtask = async (eventId, subtasksArray, subtaskId) => {
     if (!subtasksArray) return;
-    const newSubtasks = subtasksArray.map(sub => 
-      sub.id === subtaskId ? { ...sub, completed: !sub.completed } : sub
-    );
-    
-    setEvents(prev => prev.map(ev => 
-      ev.id === eventId ? { ...ev, subtasks: newSubtasks } : ev
-    ));
-
-    try {
-      const taskRef = doc(db, "task_details", eventId);
-      await updateDoc(taskRef, { subtasks: newSubtasks });
-    } catch (e) {
-      console.error("Erreur Firebase sous-tâche:", e);
-    }
+    const newSubtasks = subtasksArray.map(sub => sub.id === subtaskId ? { ...sub, completed: !sub.completed } : sub);
+    setEvents(prev => prev.map(ev => ev.id === eventId ? { ...ev, subtasks: newSubtasks } : ev));
+    try { await updateDoc(doc(db, "task_details", eventId), { subtasks: newSubtasks }); } catch (e) { console.error(e); }
   };
 
   const handleSaveRequest = (data) => {
-    if (editingEvent?.recurringEventId) {
-      setRecModal({ isOpen: true, type: 'edit', data: data });
-    } else {
-      createEvent(data, 'this');
-    }
+    if (editingEvent?.recurringEventId) setRecModal({ isOpen: true, type: 'edit', data: data });
+    else createEvent(data, 'this');
   };
 
   const handleDeleteRequest = (eventOrId) => {
     const event = typeof eventOrId === 'string' ? events.find(e => e.id === eventOrId) : eventOrId;
     if (!event) return;
-    if (event.recurringEventId) {
-      setRecModal({ isOpen: true, type: 'delete', data: event });
-    } else {
-      setDeleteModal({ isOpen: true, event: event });
-    }
+    if (event.recurringEventId) setRecModal({ isOpen: true, type: 'delete', data: event });
+    else setDeleteModal({ isOpen: true, event: event });
   };
 
   const createEvent = async (taskData, modType = 'this') => {
@@ -261,35 +261,27 @@ function App() {
         googleId = res.result.id;
       }
       await setDoc(doc(db, "task_details", String(googleId)), { subtasks: taskData.subtasks || [] }, { merge: true });
-      closeAddModal(); 
-      fetchAllEvents();
-    } catch (e) { 
-      console.error(e); 
-    }
+      closeAddModal(); fetchAllEvents();
+    } catch (e) { console.error(e); }
   };
 
   const deleteSingleEvent = async (id, modType = 'this') => {
     try {
       const event = events.find(e => e.id === id);
       if (!event) return;
-      const calendarId = event.calId || 'primary';
-      const targetId = (modType === 'all' && event.recurringEventId) ? event.recurringEventId : id;
-      await gapi.client.calendar.events.delete({ calendarId: calendarId, eventId: targetId });
+      await gapi.client.calendar.events.delete({ 
+        calendarId: event.calId || 'primary', 
+        eventId: (modType === 'all' && event.recurringEventId) ? event.recurringEventId : id 
+      });
       fetchAllEvents();
-    } catch (e) { 
-      console.error(e); 
-    }
+    } catch (e) { console.error(e); }
   };
 
   const handleEditEvent = (event) => {
     if (event.isNewFromGap) {
-      setEditingEvent(null);
-      setNewTaskTitle("");
-      setNewTaskTime(event.startTime);
-      setNewTaskDuration(event.gapDuration);
+      setEditingEvent(null); setNewTaskTitle(""); setNewTaskTime(event.startTime); setNewTaskDuration(event.gapDuration);
     } else {
-      setEditingEvent(event);
-      setNewTaskTitle(event.summary);
+      setEditingEvent(event); setNewTaskTitle(event.summary);
       const st = new Date(event.start.dateTime || event.start.date);
       setNewTaskTime(format(st, 'HH:mm'));
       setNewTaskDuration(Math.round((new Date(event.end.dateTime || event.end.date) - st) / 60000));
@@ -297,16 +289,10 @@ function App() {
     setShowAddModal(true);
   };
 
-  const closeAddModal = () => { 
-    setShowAddModal(false); 
-    setEditingEvent(null); 
-    setNewTaskTitle(""); 
-  };
-
+  const closeAddModal = () => { setShowAddModal(false); setEditingEvent(null); setNewTaskTitle(""); };
   const toggleTaskCompletion = (id) => { 
     const n = {...completedEvents, [id]:!completedEvents[id]}; 
-    setCompletedEvents(n); 
-    localStorage.setItem('completed_tasks', JSON.stringify(n)); 
+    setCompletedEvents(n); localStorage.setItem('completed_tasks', JSON.stringify(n)); 
   };
 
   const todaySummary = getDailySummary(new Date(), forecast);
@@ -317,78 +303,34 @@ function App() {
       <Layout activeTab={activeTab} setActiveTab={setActiveTab} setShowAddModal={setShowAddModal} setShowCalMenu={setShowCalMenu} showCalMenu={showCalMenu}>
         {activeTab === 'timeline' ? (
           <TimelineView 
-            forecast={forecast} 
-            events={events.filter(e => e.start?.dateTime)} 
-            currentDate={currentDate} 
-            setCurrentDate={setCurrentDate}
-            now={now} 
-            completedEvents={completedEvents} 
-            toggleTaskCompletion={toggleTaskCompletion} 
-            onToggleSubtask={handleToggleSubtask}
-            isSignedIn={isSignedIn} 
-            handleLogin={handleLogin} 
-            isLoading={isLoading} 
-            todaySummary={todaySummary} 
-            calendars={calendars} 
-            showCalMenu={showCalMenu} 
-            setShowCalMenu={setShowCalMenu} 
-            setShowAddModal={setShowAddModal} 
-            onDeleteEvent={handleDeleteRequest} 
-            onEditEvent={handleEditEvent} 
+            forecast={forecast} events={events.filter(e => e.start?.dateTime)} currentDate={currentDate} setCurrentDate={setCurrentDate}
+            now={now} completedEvents={completedEvents} toggleTaskCompletion={toggleTaskCompletion} 
+            onToggleSubtask={handleToggleSubtask} isSignedIn={isSignedIn} handleLogin={handleLogin} 
+            isLoading={isLoading} todaySummary={todaySummary} calendars={calendars} 
+            showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu} setShowAddModal={setShowAddModal} 
+            onDeleteEvent={handleDeleteRequest} onEditEvent={handleEditEvent} 
             allDayEvents={events.filter(e => !e.start?.dateTime)} 
           />
         ) : activeTab === 'inbox' ? (
-          <InboxView onPlanTask={(title) => {
-            setNewTaskTitle(title);
-            setShowAddModal(true);
-          }} />
+          <InboxView onPlanTask={(title) => { setNewTaskTitle(title); setShowAddModal(true); }} />
         ) : activeTab === 'lists' ? (
           <ListsView />
         ) : activeTab === 'settings' ? (
           <SettingsView 
-            calendars={calendars} 
-            selectedCalendarIds={selectedCalendarIds} 
+            calendars={calendars} selectedCalendarIds={selectedCalendarIds} 
             toggleCalendar={(id)=>setSelectedCalendarIds(p=>p.includes(id)?p.filter(i=>i!==id):[...p,id])} 
-            handleLogout={()=>{localStorage.clear();window.location.reload();}} 
+            handleLogout={()=>{auth.signOut(); localStorage.clear(); window.location.reload();}} 
           />
         ) : null}
       </Layout>
 
       {showAddModal && (
-        <AddTaskModal 
-          onClose={closeAddModal} 
-          currentDate={currentDate} 
-          newTaskTitle={newTaskTitle} 
-          setNewTaskTitle={setNewTaskTitle} 
-          newTaskTime={newTaskTime} 
-          setNewTaskTime={setNewTaskTime} 
-          newTaskDuration={newTaskDuration} 
-          setNewTaskDuration={setNewTaskDuration} 
-          onAdd={handleSaveRequest} 
-          editingEvent={editingEvent} 
-        />
+        <AddTaskModal onClose={closeAddModal} currentDate={currentDate} newTaskTitle={newTaskTitle} setNewTaskTitle={setNewTaskTitle} newTaskTime={newTaskTime} setNewTaskTime={setNewTaskTime} newTaskDuration={newTaskDuration} setNewTaskDuration={setNewTaskDuration} onAdd={handleSaveRequest} editingEvent={editingEvent} />
       )}
 
-      <RecurringChoiceModal 
-        isOpen={recModal.isOpen}
-        actionType={recModal.type}
-        onClose={() => setRecModal({ ...recModal, isOpen: false })}
-        onSelect={(choice) => {
-          if (recModal.type === 'edit') createEvent(recModal.data, choice);
-          else deleteSingleEvent(recModal.data.id, choice);
-          setRecModal({ ...recModal, isOpen: false });
-        }}
-      />
+      <RecurringChoiceModal isOpen={recModal.isOpen} actionType={recModal.type} onClose={() => setRecModal({ ...recModal, isOpen: false })} onSelect={(choice) => { if (recModal.type === 'edit') createEvent(recModal.data, choice); else deleteSingleEvent(recModal.data.id, choice); setRecModal({ ...recModal, isOpen: false }); }} />
 
-      <DeleteModal 
-        isOpen={deleteModal.isOpen}
-        taskTitle={deleteModal.event?.summary || ""}
-        onClose={() => setDeleteModal({ isOpen: false, event: null })}
-        onConfirm={() => {
-          deleteSingleEvent(deleteModal.event.id, 'this');
-          setDeleteModal({ isOpen: false, event: null });
-        }}
-      />
+      <DeleteModal isOpen={deleteModal.isOpen} taskTitle={deleteModal.event?.summary || ""} onClose={() => setDeleteModal({ isOpen: false, event: null })} onConfirm={() => { deleteSingleEvent(deleteModal.event.id, 'this'); setDeleteModal({ isOpen: false, event: null }); }} />
 
       {showCalMenu && (
         <div className="modal-backdrop" onClick={()=>setShowCalMenu(false)}>
