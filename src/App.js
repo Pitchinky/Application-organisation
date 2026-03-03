@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import MobileLayout from './layouts/MobileLayout';
 import DesktopLayout from './layouts/DesktopLayout';
 import TimelineView from './views/TimelineView';
+import ListsView from './views/ListsView';
 import InboxView from './views/InboxView';
 import SettingsView from './views/SettingsView'
 
@@ -222,7 +223,6 @@ function App() {
 
   // --- UI UTILS ---
 
-  // CORRECTION ICI : Gestion du clic sur le Gap (+)
   const handleEditEvent = (event) => {
     if (event.isNewFromGap) {
       setEditingEvent(null);
@@ -252,7 +252,22 @@ function App() {
     <>
       <Layout activeTab={activeTab} setActiveTab={setActiveTab} setShowAddModal={setShowAddModal} setShowCalMenu={setShowCalMenu} showCalMenu={showCalMenu}>
         {activeTab === 'timeline' ? (
-          <TimelineView forecast={forecast} events={events.filter(e => e.start.dateTime)} currentDate={currentDate} setCurrentDate={setCurrentDate} now={now} completedEvents={completedEvents} toggleTaskCompletion={toggleTaskCompletion} isSignedIn={isSignedIn} handleLogin={()=>tokenClient?.requestAccessToken()} isLoading={isLoading} todaySummary={todaySummary} calendars={calendars} showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu} setShowAddModal={setShowAddModal} onDeleteEvent={handleDeleteRequest} onEditEvent={handleEditEvent} allDayEvents={events.filter(e => !e.start.dateTime)} />
+          <TimelineView 
+            forecast={forecast} events={events.filter(e => e.start?.dateTime)} currentDate={currentDate} setCurrentDate={setCurrentDate}
+            now={now} completedEvents={completedEvents} toggleTaskCompletion={toggleTaskCompletion} 
+            isSignedIn={isSignedIn} handleLogin={()=>tokenClient?.requestAccessToken()} isLoading={isLoading} todaySummary={todaySummary} 
+            calendars={calendars} showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu} setShowAddModal={setShowAddModal} 
+            onDeleteEvent={handleDeleteRequest} onEditEvent={handleEditEvent} allDayEvents={events.filter(e => !e.start?.dateTime)} 
+          />
+        ) : activeTab === 'inbox' ? (
+          /* L'Inbox pour les tâches en vrac */
+          <InboxView onPlanTask={(title) => {
+            setNewTaskTitle(title);
+            setShowAddModal(true);
+          }} />
+        ) : activeTab === 'lists' ? (
+          /* La partie Listes avec Courses par défaut */
+          <ListsView />
         ) : activeTab === 'settings' ? (
           <SettingsView calendars={calendars} selectedCalendarIds={selectedCalendarIds} toggleCalendar={(id)=>setSelectedCalendarIds(p=>p.includes(id)?p.filter(i=>i!==id):[...p,id])} handleLogout={()=>{localStorage.clear();window.location.reload();}} />
         ) : null}

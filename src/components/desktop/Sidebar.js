@@ -14,8 +14,8 @@ export default function Sidebar({ activeTab, setActiveTab }) {
         <button className={`sidebar-btn ${activeTab==='inbox'?'active':''}`} onClick={()=>setActiveTab('inbox')}>
           <Inbox size={20} /> Inbox
         </button>
-        <button className={`sidebar-btn ${activeTab==='shopping'?'active':''}`} onClick={()=>setActiveTab('shopping')}>
-           <CalIcon size={20} /> Courses
+        <button className={`sidebar-btn ${activeTab==='lists'?'active':''}`} onClick={()=>setActiveTab('lists')}>
+           <CalIcon size={20} /> Listes
         </button>
 
         <button className={`sidebar-btn ${activeTab==='settings'?'active':''}`} onClick={()=>setActiveTab('settings')}>

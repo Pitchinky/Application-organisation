@@ -16,8 +16,8 @@ export default function BottomNav({ activeTab, setActiveTab, onAddClick, onFilte
            <Plus size={28} color="white" />
          </button>
        </div>
-       <button className={`nav-item ${activeTab==='shopping'?'active':''}`} onClick={()=>setActiveTab('shopping')}>
-         <CalIcon size={24} /><span>Courses</span>
+       <button className={`nav-item ${activeTab==='lists'?'active':''}`} onClick={()=>setActiveTab('lists')}>
+         <CalIcon size={24} /><span>Listes</span>
        </button>
        <button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={()=>setActiveTab('settings')}>
           <Settings size={24} />
