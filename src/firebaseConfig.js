@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore"; // Importe Firestore
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCwq64pM43q1jn6Mm9RrWCzUwmuL1RidbM",
@@ -18,6 +19,14 @@ const app = initializeApp(firebaseConfig);
 
 // Exportation de la base de données Firestore pour l'utiliser dans ton App
 export const db = getFirestore(app);
+
+export const auth = getAuth(app);
+export const provider = new GoogleAuthProvider();
+
+// Juste après avoir importé provider
+provider.addScope('https://www.googleapis.com/auth/calendar.events');
+provider.addScope('https://www.googleapis.com/auth/calendar.readonly'); // Optionnel mais conseillé
+
 
 // Ajout du Messaging
 // On ne lance la messagerie que si Apple l'autorise
