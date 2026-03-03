@@ -64,22 +64,32 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // INITIALISATION GAPI ET TOKEN CLIENT
   useEffect(() => {
-    gapi.load("client", async () => {
-      await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
-      setCompletedEvents(JSON.parse(localStorage.getItem('completed_tasks') || '{}'));
-      const token = localStorage.getItem('g_token');
-      const expiry = localStorage.getItem('g_expiry');
-      if (token && expiry && Date.now() < parseInt(expiry)) {
-        gapi.client.setToken({ access_token: token });
-        setIsSignedIn(true);
-        loadData();
-      }
-    });
+    const startGapi = async () => {
+      await gapi.load("client", async () => {
+        await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
+        
+        // Vérification de la validité du token au chargement
+        const token = localStorage.getItem('g_token');
+        const expiry = localStorage.getItem('g_expiry');
+        
+        if (token && expiry && Date.now() < parseInt(expiry)) {
+          gapi.client.setToken({ access_token: token });
+          setIsSignedIn(true);
+          loadData();
+        } else {
+          // Si expiré ou absent, on s'assure que l'état est déconnecté
+          setIsSignedIn(false);
+          localStorage.removeItem('isLoggedIn');
+        }
+      });
+    };
+    startGapi();
 
-    const initClient = () => {
+    const initIdentityServices = () => {
       if (window.google && window.google.accounts) {
-        setTokenClient(window.google.accounts.oauth2.initTokenClient({
+        const client = window.google.accounts.oauth2.initTokenClient({
           client_id: CLIENT_ID,
           scope: SCOPES,
           callback: (resp) => {
@@ -93,11 +103,15 @@ function App() {
               loadData();
             }
           },
-        }));
-      } else { setTimeout(initClient, 500); }
+        });
+        setTokenClient(client);
+      } else { 
+        setTimeout(initIdentityServices, 500); 
+      }
     };
-    initClient();
+    initIdentityServices();
 
+    // Weather & Timer
     if (WEATHER_KEY) {
        navigator.geolocation.getCurrentPosition(async (pos) => {
           try {
@@ -111,18 +125,23 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Rafraîchissement silencieux du token
+  // RAFRAÎCHISSEMENT SILENCIEUX (Optimisé pour la stabilité)
   useEffect(() => {
     const checkAndRefreshToken = () => {
       const token = localStorage.getItem('g_token');
       const expiry = localStorage.getItem('g_expiry');
+      
       if (token && expiry && tokenClient) {
-        if (parseInt(expiry) - Date.now() < 300000) {
+        const timeLeft = parseInt(expiry) - Date.now();
+        // Si moins de 10 minutes restantes, on rafraîchit
+        if (timeLeft < 600000) {
+          console.log("Rafraîchissement automatique du token...");
           tokenClient.requestAccessToken({ prompt: 'none' });
         }
       }
     };
-    const interval = setInterval(checkAndRefreshToken, 300000);
+    // On vérifie toutes les minutes au lieu de toutes les 5 minutes
+    const interval = setInterval(checkAndRefreshToken, 60000);
     return () => clearInterval(interval);
   }, [tokenClient]);
 
@@ -134,7 +153,9 @@ function App() {
       const r = await gapi.client.calendar.calendarList.list(); 
       setCalendars(r.result.items); 
       setSelectedCalendarIds(r.result.items.map(c => c.id));
-    } catch(e){} 
+    } catch(e) {
+      if (e.status === 401) setIsSignedIn(false);
+    } 
   };
 
   const fetchAllEvents = async () => {
@@ -154,7 +175,14 @@ function App() {
       });
       const res = await Promise.all(promises);
       setEvents(res.flat().sort((a, b) => new Date(a.start.dateTime || a.start.date) - new Date(b.start.dateTime || b.start.date)));
-    } catch(e) {} finally { setIsLoading(false); }
+    } catch(e) {
+      console.error("Erreur de récupération :", e);
+      // Si l'erreur est une expiration (401), on déconnecte proprement pour forcer le bouton login
+      if (e.status === 401) {
+        setIsSignedIn(false);
+        localStorage.removeItem('isLoggedIn');
+      }
+    } finally { setIsLoading(false); }
   };
 
   // --- ACTIONS ---
@@ -206,7 +234,10 @@ function App() {
       }
       await setDoc(doc(db, "task_details", String(googleId)), { subtasks: taskData.subtasks || [] }, { merge: true });
       closeAddModal(); fetchAllEvents();
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      if (e.status === 401) setIsSignedIn(false);
+      console.error(e); 
+    }
   };
 
   const deleteSingleEvent = async (id, modType = 'this') => {
@@ -218,7 +249,10 @@ function App() {
       await gapi.client.calendar.events.delete({ calendarId: calendarId, eventId: targetId });
       await deleteDoc(doc(db, "task_details", id));
       fetchAllEvents();
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      if (e.status === 401) setIsSignedIn(false);
+      console.error(e); 
+    }
   };
 
   // --- UI UTILS ---
@@ -255,18 +289,18 @@ function App() {
           <TimelineView 
             forecast={forecast} events={events.filter(e => e.start?.dateTime)} currentDate={currentDate} setCurrentDate={setCurrentDate}
             now={now} completedEvents={completedEvents} toggleTaskCompletion={toggleTaskCompletion} 
-            isSignedIn={isSignedIn} handleLogin={()=>tokenClient?.requestAccessToken()} isLoading={isLoading} todaySummary={todaySummary} 
+            isSignedIn={isSignedIn} 
+            handleLogin={() => tokenClient?.requestAccessToken({ prompt: 'select_account' })} 
+            isLoading={isLoading} todaySummary={todaySummary} 
             calendars={calendars} showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu} setShowAddModal={setShowAddModal} 
             onDeleteEvent={handleDeleteRequest} onEditEvent={handleEditEvent} allDayEvents={events.filter(e => !e.start?.dateTime)} 
           />
         ) : activeTab === 'inbox' ? (
-          /* L'Inbox pour les tâches en vrac */
           <InboxView onPlanTask={(title) => {
             setNewTaskTitle(title);
             setShowAddModal(true);
           }} />
         ) : activeTab === 'lists' ? (
-          /* La partie Listes avec Courses par défaut */
           <ListsView />
         ) : activeTab === 'settings' ? (
           <SettingsView calendars={calendars} selectedCalendarIds={selectedCalendarIds} toggleCalendar={(id)=>setSelectedCalendarIds(p=>p.includes(id)?p.filter(i=>i!==id):[...p,id])} handleLogout={()=>{localStorage.clear();window.location.reload();}} />
