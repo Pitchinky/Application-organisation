@@ -460,9 +460,10 @@
 .now-time-label {
   position: absolute;
   left: 10px;
+  top:0px;
   font-size: 10px;
   font-weight: 800;
-  color: #ff3b30;
+  color: #ff3a3080;
   background: white;
   padding: 2px 4px;
   border-radius: 4px;
@@ -471,24 +472,26 @@
 }
 
 .now-dot {
-  width: 8px;
-  height: 8px;
-  background-color: #ff3b30;
+  width: 10px;
+  height: 10px;
+  background-color: #ff3a3080;
   border-radius: 50%;
   position: absolute;
   /* 55px (time-column) + 22px (centre de visual-column) = 77px */
   left: 77px; 
+  top:0px;
   transform: translate(-50%, -50%);
-  border: 2px solid white;
+  border: 1px solid white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
 .now-line {
   flex: 1;
   height: 0;
-  border-top: 1.5px dashed #ff3b30;
+  border-top: 1.5px dashed #ff3a3080;
   /* Commence après le point */
   margin-left: 82px; 
+  margin-right: 100px;
   opacity: 0.8;
 }
 
