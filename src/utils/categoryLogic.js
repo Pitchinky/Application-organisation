@@ -19,7 +19,12 @@ const CATEGORIES = {
   REPAS: { 
     icon: 'fluent:food-20-filled', 
     color: '#636366', // Gris
-    keywords: ['manger', 'resto', 'diner', 'repas', 'déjeuner', 'lunch', 'midi', 'dîner'] 
+    keywords: ['manger', 'diner', 'repas', 'déjeuner', 'lunch', 'midi', 'dîner'] 
+  },
+  RESTAURANT: { 
+    icon: 'hugeicons:menu-restaurant', 
+    color: '#636366', // Gris
+    keywords: ['resto', 'restaurant'] 
   },
   MENAGE: { 
     icon: 'mingcute:broom-line', 
@@ -34,12 +39,17 @@ const CATEGORIES = {
   CHEVEUX: { 
     icon: 'solar:scissors-square-bold', 
     color: '#FF8AE2', // Rose bonbon clair
-    keywords: ['cheveux', 'coiffeur', 'coupe', 'barbier'] 
+    keywords: ['coiffeur'] 
   },
   SIESTE: { 
     icon: 'solar:sleeping-bold', 
     color: '#5AC8FA', // Bleu ciel / Cyan clair
     keywords: ['sieste', 'repos', 'break'] 
+  },
+  DOUCHE: { 
+    icon: 'fa7-solid:shower', 
+    color: '#5AC8FA', // Bleu ciel / Cyan clair
+    keywords: ['douche','salle de bain',"laver"] 
   },
   RENDEZVOUS: { 
     icon: 'solar:calendar-date-bold', 
@@ -72,9 +82,9 @@ const CATEGORIES = {
     keywords: ['bar', 'biere', 'bière', 'verre', 'apéro', 'apero', 'cocktail'] 
   },
   SORTIE: { 
-    icon: 'solar:ticket-bold', 
+    icon: 'boxicons:party-filled', 
     color: '#E586C6', // Mauve
-    keywords: ['espace 360', 'sortie'] 
+    keywords: ['espace 360', 'sortie','soirée'] 
   },
   SOMMEIL: { 
     icon: 'solar:moon-bold', 
