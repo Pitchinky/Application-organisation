@@ -186,6 +186,32 @@ function App() {
   };
 
   // --- ACTIONS ---
+
+  const handleToggleSubtask = async (eventId, subtasksArray, subtaskId) => {
+    if (!subtasksArray) return;
+  
+    // 1. Créer le nouveau tableau de sous-tâches
+    const newSubtasks = subtasksArray.map(sub => {
+      if (sub.id === subtaskId) {
+        return { ...sub, completed: !sub.completed };
+      }
+      return sub;
+    });
+  
+    // 2. Mise à jour immédiate de l'affichage (State)
+    setEvents(prev => prev.map(ev => 
+      ev.id === eventId ? { ...ev, subtasks: newSubtasks } : ev
+    ));
+  
+    // 3. Mise à jour Firebase en arrière-plan
+    try {
+      const taskRef = doc(db, "task_details", eventId);
+      await updateDoc(taskRef, { subtasks: newSubtasks });
+    } catch (e) {
+      console.error("Erreur Firebase sous-tâche:", e);
+    }
+  };
+
   const handleSaveRequest = (data) => {
     if (editingEvent?.recurringEventId) {
       setRecModal({ isOpen: true, type: 'edit', data: data });
@@ -289,9 +315,8 @@ function App() {
           <TimelineView 
             forecast={forecast} events={events.filter(e => e.start?.dateTime)} currentDate={currentDate} setCurrentDate={setCurrentDate}
             now={now} completedEvents={completedEvents} toggleTaskCompletion={toggleTaskCompletion} 
-            isSignedIn={isSignedIn} 
-            handleLogin={() => tokenClient?.requestAccessToken({ prompt: 'select_account' })} 
-            isLoading={isLoading} todaySummary={todaySummary} 
+            onToggleSubtask={handleToggleSubtask}
+            isSignedIn={isSignedIn} handleLogin={()=>tokenClient?.requestAccessToken({ prompt: 'select_account' })} isLoading={isLoading} todaySummary={todaySummary} 
             calendars={calendars} showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu} setShowAddModal={setShowAddModal} 
             onDeleteEvent={handleDeleteRequest} onEditEvent={handleEditEvent} allDayEvents={events.filter(e => !e.start?.dateTime)} 
           />
