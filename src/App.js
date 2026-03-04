@@ -20,7 +20,7 @@ import DeleteModal from './components/shared/DeleteModal';
 import { getDailySummary } from './utils/weatherLogic';
 
 // FIREBASE
-import { db } from './firebaseConfig';
+import { db, auth } from './firebaseConfig'; // AJOUT : import de auth
 import { doc, setDoc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { requestForToken, onMessageListener } from './firebaseConfig';
 
@@ -64,24 +64,21 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // INITIALISATION GAPI ET TOKEN CLIENT
+  // INITIALISATION GAPI ET TOKEN CLIENT (Modifié pour la persistance)
   useEffect(() => {
     const startGapi = async () => {
       await gapi.load("client", async () => {
         await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
         
-        // Vérification de la validité du token au chargement
-        const token = localStorage.getItem('g_token');
-        const expiry = localStorage.getItem('g_expiry');
+        // On vérifie d'abord le local
+        let token = localStorage.getItem('g_token');
+        let expiry = localStorage.getItem('g_expiry');
         
+        // Si rien en local, on attend que Firebase Auth prenne le relais (voir useEffect plus bas)
         if (token && expiry && Date.now() < parseInt(expiry)) {
           gapi.client.setToken({ access_token: token });
           setIsSignedIn(true);
           loadData();
-        } else {
-          // Si expiré ou absent, on s'assure que l'état est déconnecté
-          setIsSignedIn(false);
-          localStorage.removeItem('isLoggedIn');
         }
       });
     };
@@ -92,12 +89,23 @@ function App() {
         const client = window.google.accounts.oauth2.initTokenClient({
           client_id: CLIENT_ID,
           scope: SCOPES,
-          callback: (resp) => {
+          callback: async (resp) => {
             if (resp.access_token) {
               const expiresIn = (resp.expires_in || 3599) * 1000;
+              const expiryDate = Date.now() + expiresIn;
+
               localStorage.setItem('g_token', resp.access_token);
-              localStorage.setItem('g_expiry', Date.now() + expiresIn);
+              localStorage.setItem('g_expiry', expiryDate);
               localStorage.setItem('isLoggedIn', 'true');
+
+              // SAUVEGARDE DANS FIRESTORE pour la persistance longue durée
+              if (auth.currentUser) {
+                await setDoc(doc(db, "user_sessions", auth.currentUser.uid), {
+                  g_token: resp.access_token,
+                  g_expiry: expiryDate
+                }, { merge: true });
+              }
+
               gapi.client.setToken({ access_token: resp.access_token });
               setIsSignedIn(true);
               loadData();
@@ -111,7 +119,6 @@ function App() {
     };
     initIdentityServices();
 
-    // Weather & Timer
     if (WEATHER_KEY) {
        navigator.geolocation.getCurrentPosition(async (pos) => {
           try {
@@ -125,22 +132,54 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // RAFRAÎCHISSEMENT SILENCIEUX (Optimisé pour la stabilité)
+  // NOUVEAU : SYNC AVEC FIREBASE AUTH (Pour récupérer le token sur iPhone)
   useEffect(() => {
-    const checkAndRefreshToken = () => {
-      const token = localStorage.getItem('g_token');
-      const expiry = localStorage.getItem('g_expiry');
-      
-      if (token && expiry && tokenClient) {
-        const timeLeft = parseInt(expiry) - Date.now();
-        // Si moins de 10 minutes restantes, on rafraîchit
-        if (timeLeft < 600000) {
-          console.log("Rafraîchissement automatique du token...");
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user && !isSignedIn) {
+        const userDoc = await getDoc(doc(db, "user_sessions", user.uid));
+        if (userDoc.exists()) {
+          const { g_token, g_expiry } = userDoc.data();
+          if (Date.now() < g_expiry) {
+            localStorage.setItem('g_token', g_token);
+            localStorage.setItem('g_expiry', g_expiry);
+            localStorage.setItem('isLoggedIn', 'true');
+            gapi.client.setToken({ access_token: g_token });
+            setIsSignedIn(true);
+            loadData();
+          } else if (tokenClient) {
+            tokenClient.requestAccessToken({ prompt: 'none' });
+          }
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [tokenClient, isSignedIn]);
+
+  // NOUVEAU : GESTION DU REVEIL IPHONE (Quand on revient sur l'app)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isSignedIn && tokenClient) {
+        const expiry = localStorage.getItem('g_expiry');
+        if (expiry && Date.now() > parseInt(expiry) - 300000) { // 5 min avant fin
           tokenClient.requestAccessToken({ prompt: 'none' });
         }
       }
     };
-    // On vérifie toutes les minutes au lieu de toutes les 5 minutes
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [isSignedIn, tokenClient]);
+
+  // RAFRAÎCHISSEMENT SILENCIEUX
+  useEffect(() => {
+    const checkAndRefreshToken = () => {
+      const token = localStorage.getItem('g_token');
+      const expiry = localStorage.getItem('g_expiry');
+      if (token && expiry && tokenClient) {
+        if (parseInt(expiry) - Date.now() < 600000) {
+          tokenClient.requestAccessToken({ prompt: 'none' });
+        }
+      }
+    };
     const interval = setInterval(checkAndRefreshToken, 60000);
     return () => clearInterval(interval);
   }, [tokenClient]);
@@ -176,8 +215,6 @@ function App() {
       const res = await Promise.all(promises);
       setEvents(res.flat().sort((a, b) => new Date(a.start.dateTime || a.start.date) - new Date(b.start.dateTime || b.start.date)));
     } catch(e) {
-      console.error("Erreur de récupération :", e);
-      // Si l'erreur est une expiration (401), on déconnecte proprement pour forcer le bouton login
       if (e.status === 401) {
         setIsSignedIn(false);
         localStorage.removeItem('isLoggedIn');
@@ -186,48 +223,28 @@ function App() {
   };
 
   // --- ACTIONS ---
-
   const handleToggleSubtask = async (eventId, subtasksArray, subtaskId) => {
     if (!subtasksArray) return;
-  
-    // 1. Créer le nouveau tableau de sous-tâches
     const newSubtasks = subtasksArray.map(sub => {
-      if (sub.id === subtaskId) {
-        return { ...sub, completed: !sub.completed };
-      }
+      if (sub.id === subtaskId) return { ...sub, completed: !sub.completed };
       return sub;
     });
-  
-    // 2. Mise à jour immédiate de l'affichage (State)
-    setEvents(prev => prev.map(ev => 
-      ev.id === eventId ? { ...ev, subtasks: newSubtasks } : ev
-    ));
-  
-    // 3. Mise à jour Firebase en arrière-plan
+    setEvents(prev => prev.map(ev => ev.id === eventId ? { ...ev, subtasks: newSubtasks } : ev));
     try {
-      const taskRef = doc(db, "task_details", eventId);
-      await updateDoc(taskRef, { subtasks: newSubtasks });
-    } catch (e) {
-      console.error("Erreur Firebase sous-tâche:", e);
-    }
+      await updateDoc(doc(db, "task_details", eventId), { subtasks: newSubtasks });
+    } catch (e) {}
   };
 
   const handleSaveRequest = (data) => {
-    if (editingEvent?.recurringEventId) {
-      setRecModal({ isOpen: true, type: 'edit', data: data });
-    } else {
-      createEvent(data, 'this');
-    }
+    if (editingEvent?.recurringEventId) setRecModal({ isOpen: true, type: 'edit', data: data });
+    else createEvent(data, 'this');
   };
 
   const handleDeleteRequest = (eventOrId) => {
     const event = typeof eventOrId === 'string' ? events.find(e => e.id === eventOrId) : eventOrId;
     if (!event) return;
-    if (event.recurringEventId) {
-      setRecModal({ isOpen: true, type: 'delete', data: event });
-    } else {
-      setDeleteModal({ isOpen: true, event: event });
-    }
+    if (event.recurringEventId) setRecModal({ isOpen: true, type: 'delete', data: event });
+    else setDeleteModal({ isOpen: true, event: event });
   };
 
   const createEvent = async (taskData, modType = 'this') => {
@@ -262,7 +279,6 @@ function App() {
       closeAddModal(); fetchAllEvents();
     } catch (e) { 
       if (e.status === 401) setIsSignedIn(false);
-      console.error(e); 
     }
   };
 
@@ -270,28 +286,21 @@ function App() {
     try {
       const event = events.find(e => e.id === id);
       if (!event) return;
-      const calendarId = event.calId || 'primary';
       const targetId = (modType === 'all' && event.recurringEventId) ? event.recurringEventId : id;
-      await gapi.client.calendar.events.delete({ calendarId: calendarId, eventId: targetId });
+      await gapi.client.calendar.events.delete({ calendarId: event.calId || 'primary', eventId: targetId });
       await deleteDoc(doc(db, "task_details", id));
       fetchAllEvents();
     } catch (e) { 
       if (e.status === 401) setIsSignedIn(false);
-      console.error(e); 
     }
   };
 
   // --- UI UTILS ---
-
   const handleEditEvent = (event) => {
     if (event.isNewFromGap) {
-      setEditingEvent(null);
-      setNewTaskTitle("");
-      setNewTaskTime(event.startTime);
-      setNewTaskDuration(event.gapDuration);
+      setEditingEvent(null); setNewTaskTitle(""); setNewTaskTime(event.startTime); setNewTaskDuration(event.gapDuration);
     } else {
-      setEditingEvent(event);
-      setNewTaskTitle(event.summary);
+      setEditingEvent(event); setNewTaskTitle(event.summary);
       const st = new Date(event.start.dateTime || event.start.date);
       setNewTaskTime(format(st, 'HH:mm'));
       setNewTaskDuration(Math.round((new Date(event.end.dateTime || event.end.date) - st) / 60000));
@@ -321,10 +330,7 @@ function App() {
             onDeleteEvent={handleDeleteRequest} onEditEvent={handleEditEvent} allDayEvents={events.filter(e => !e.start?.dateTime)} 
           />
         ) : activeTab === 'inbox' ? (
-          <InboxView onPlanTask={(title) => {
-            setNewTaskTitle(title);
-            setShowAddModal(true);
-          }} />
+          <InboxView onPlanTask={(title) => { setNewTaskTitle(title); setShowAddModal(true); }} />
         ) : activeTab === 'lists' ? (
           <ListsView />
         ) : activeTab === 'settings' ? (
@@ -337,8 +343,7 @@ function App() {
       )}
 
       <RecurringChoiceModal 
-        isOpen={recModal.isOpen}
-        actionType={recModal.type}
+        isOpen={recModal.isOpen} actionType={recModal.type}
         onClose={() => setRecModal({ ...recModal, isOpen: false })}
         onSelect={(choice) => {
           if (recModal.type === 'edit') createEvent(recModal.data, choice);
@@ -348,8 +353,7 @@ function App() {
       />
 
       <DeleteModal 
-        isOpen={deleteModal.isOpen}
-        taskTitle={deleteModal.event?.summary || ""}
+        isOpen={deleteModal.isOpen} taskTitle={deleteModal.event?.summary || ""}
         onClose={() => setDeleteModal({ isOpen: false, event: null })}
         onConfirm={() => {
           deleteSingleEvent(deleteModal.event.id, 'this');
