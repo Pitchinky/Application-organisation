@@ -20,7 +20,7 @@ import DeleteModal from './components/shared/DeleteModal';
 import { getDailySummary } from './utils/weatherLogic';
 
 // FIREBASE
-import { db, auth } from './firebaseConfig'; // AJOUT : import de auth
+import { db, auth } from './firebaseConfig'; // Import de auth indispensable
 import { doc, setDoc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { requestForToken, onMessageListener } from './firebaseConfig';
 
@@ -64,17 +64,15 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // INITIALISATION GAPI ET TOKEN CLIENT (Modifié pour la persistance)
+  // INITIALISATION GAPI
   useEffect(() => {
     const startGapi = async () => {
       await gapi.load("client", async () => {
         await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
         
-        // On vérifie d'abord le local
-        let token = localStorage.getItem('g_token');
-        let expiry = localStorage.getItem('g_expiry');
+        const token = localStorage.getItem('g_token');
+        const expiry = localStorage.getItem('g_expiry');
         
-        // Si rien en local, on attend que Firebase Auth prenne le relais (voir useEffect plus bas)
         if (token && expiry && Date.now() < parseInt(expiry)) {
           gapi.client.setToken({ access_token: token });
           setIsSignedIn(true);
@@ -98,11 +96,12 @@ function App() {
               localStorage.setItem('g_expiry', expiryDate);
               localStorage.setItem('isLoggedIn', 'true');
 
-              // SAUVEGARDE DANS FIRESTORE pour la persistance longue durée
+              // SAUVEGARDE DANS LA NOUVELLE COLLECTION user_sessions
               if (auth.currentUser) {
                 await setDoc(doc(db, "user_sessions", auth.currentUser.uid), {
                   g_token: resp.access_token,
-                  g_expiry: expiryDate
+                  g_expiry: expiryDate,
+                  updatedAt: new Date()
                 }, { merge: true });
               }
 
@@ -132,13 +131,15 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // NOUVEAU : SYNC AVEC FIREBASE AUTH (Pour récupérer le token sur iPhone)
+  // --- LOGIQUE DE PERSISTANCE (Spécial iPhone/Web long terme) ---
+
+  // 1. Récupérer le token depuis Firestore au démarrage si le local est vide
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    const syncFromFirebase = auth.onAuthStateChanged(async (user) => {
       if (user && !isSignedIn) {
-        const userDoc = await getDoc(doc(db, "user_sessions", user.uid));
-        if (userDoc.exists()) {
-          const { g_token, g_expiry } = userDoc.data();
+        const docSnap = await getDoc(doc(db, "user_sessions", user.uid));
+        if (docSnap.exists()) {
+          const { g_token, g_expiry } = docSnap.data();
           if (Date.now() < g_expiry) {
             localStorage.setItem('g_token', g_token);
             localStorage.setItem('g_expiry', g_expiry);
@@ -147,40 +148,37 @@ function App() {
             setIsSignedIn(true);
             loadData();
           } else if (tokenClient) {
+            // Si expiré, on tente de rafraîchir sans demander à l'utilisateur
             tokenClient.requestAccessToken({ prompt: 'none' });
           }
         }
       }
     });
-    return () => unsubscribe();
+    return () => syncFromFirebase();
   }, [tokenClient, isSignedIn]);
 
-  // NOUVEAU : GESTION DU REVEIL IPHONE (Quand on revient sur l'app)
+  // 2. Rafraîchir quand on revient sur l'iPhone (Visibility Change)
   useEffect(() => {
-    const handleVisibilityChange = () => {
+    const handleWakeUp = () => {
       if (document.visibilityState === 'visible' && isSignedIn && tokenClient) {
         const expiry = localStorage.getItem('g_expiry');
-        if (expiry && Date.now() > parseInt(expiry) - 300000) { // 5 min avant fin
+        if (expiry && Date.now() > parseInt(expiry) - 600000) { // 10 min avant expiration
           tokenClient.requestAccessToken({ prompt: 'none' });
         }
       }
     };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleWakeUp);
+    return () => document.removeEventListener("visibilitychange", handleWakeUp);
   }, [isSignedIn, tokenClient]);
 
-  // RAFRAÎCHISSEMENT SILENCIEUX
+  // 3. Rafraîchissement automatique en arrière-plan
   useEffect(() => {
-    const checkAndRefreshToken = () => {
-      const token = localStorage.getItem('g_token');
+    const interval = setInterval(() => {
       const expiry = localStorage.getItem('g_expiry');
-      if (token && expiry && tokenClient) {
-        if (parseInt(expiry) - Date.now() < 600000) {
-          tokenClient.requestAccessToken({ prompt: 'none' });
-        }
+      if (expiry && tokenClient && Date.now() > parseInt(expiry) - 600000) {
+        tokenClient.requestAccessToken({ prompt: 'none' });
       }
-    };
-    const interval = setInterval(checkAndRefreshToken, 60000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [tokenClient]);
 
@@ -277,9 +275,7 @@ function App() {
       }
       await setDoc(doc(db, "task_details", String(googleId)), { subtasks: taskData.subtasks || [] }, { merge: true });
       closeAddModal(); fetchAllEvents();
-    } catch (e) { 
-      if (e.status === 401) setIsSignedIn(false);
-    }
+    } catch (e) { if (e.status === 401) setIsSignedIn(false); }
   };
 
   const deleteSingleEvent = async (id, modType = 'this') => {
@@ -290,9 +286,7 @@ function App() {
       await gapi.client.calendar.events.delete({ calendarId: event.calId || 'primary', eventId: targetId });
       await deleteDoc(doc(db, "task_details", id));
       fetchAllEvents();
-    } catch (e) { 
-      if (e.status === 401) setIsSignedIn(false);
-    }
+    } catch (e) { if (e.status === 401) setIsSignedIn(false); }
   };
 
   // --- UI UTILS ---
