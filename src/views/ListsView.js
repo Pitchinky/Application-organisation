@@ -27,14 +27,7 @@ export default function ListsView() {
   }, []);
 
   const setupInitialLists = async () => {
-    // Création de l'Inbox (Tâches non plannifiées)
-    // On utilise l'icône "inbox"
-    await setDoc(doc(db, "lists", "inbox"), { 
-      name: "Inbox", 
-      icon: "inbox", 
-      items: [], 
-      color: "#007AFF" 
-    });
+    
     // Création de la liste de Courses
     await setDoc(doc(db, "lists", "courses"), { 
       name: "Courses", 

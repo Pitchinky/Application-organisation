@@ -56,3 +56,39 @@
     width: 48px; height: 48px; border-radius: 50%; border: none;
     display: flex; align-items: center; justify-content: center;
   }
+
+  /* Style du bouton de suppression */
+.delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent; /* Fond invisible par défaut */
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%; /* Cercle parfait */
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  -webkit-tap-highlight-color: transparent; /* Supprime le flash bleu sur iPhone */
+}
+
+/* Effet au survol (Desktop) */
+@media (hover: hover) {
+  .delete-btn:hover {
+    background-color: rgba(255, 59, 48, 0.1); /* Rouge très léger en fond */
+    transform: scale(1.1); /* Grandit légèrement */
+  }
+}
+
+/* Effet quand on clique (Feedback tactile) */
+.delete-btn:active {
+  background-color: rgba(255, 59, 48, 0.2);
+  transform: scale(0.9); /* Rétrécit un peu sous la pression */
+}
+
+/* Pour que l'icône à l'intérieur soit bien centrée */
+.delete-btn svg {
+  display: block;
+  transition: color 0.2s ease;
+}
