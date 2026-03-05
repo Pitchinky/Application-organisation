@@ -22,7 +22,7 @@ import { getDailySummary } from './utils/weatherLogic';
 // FIREBASE
 import { db, auth, provider } from './firebaseConfig';
 import { doc, setDoc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
-import { signInWithPopup, onAuthStateChanged, GoogleAuthProvider } from "firebase/auth";
+import { signInWithPopup, onAuthStateChanged, GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 
 const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
@@ -58,96 +58,9 @@ function App() {
   const [recModal, setRecModal] = useState({ isOpen: false, type: 'edit', data: null });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, event: null });
 
-  // --- LOGIQUE DE CONNEXION ET PERSISTANCE ---
+  // --- LOGIQUE DE CONNEXION ET PERSISTANCE CORRIGÉE ---
 
-  // 1. Synchronisation initiale avec Firebase et Firestore
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setIsSignedIn(true);
-        
-        let token = localStorage.getItem('g_token');
-        let expiry = localStorage.getItem('g_expiry');
-
-        // Si LocalStorage vide (iPhone), récupération depuis Firestore
-        if (!token || (expiry && Date.now() > parseInt(expiry))) {
-          const docSnap = await getDoc(doc(db, "user_sessions", user.uid));
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            token = data.g_token;
-            expiry = data.g_expiry;
-            localStorage.setItem('g_token', token);
-            localStorage.setItem('g_expiry', expiry);
-          }
-        }
-
-        if (token && gapiReady) {
-          gapi.client.setToken({ access_token: token });
-          loadData();
-        }
-      } else {
-        setIsSignedIn(false);
-        localStorage.removeItem('g_token');
-        localStorage.removeItem('g_expiry');
-      }
-    });
-    return () => unsubscribe();
-  }, [gapiReady]);
-
-  // 2. Login interactif et sauvegarde Firestore
-  const handleLogin = async () => {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const token = credential.accessToken;
-
-      if (token) {
-        const expiryDate = Date.now() + 3599 * 1000;
-        localStorage.setItem('g_token', token);
-        localStorage.setItem('g_expiry', expiryDate);
-        
-        await setDoc(doc(db, "user_sessions", result.user.uid), {
-          g_token: token,
-          g_expiry: expiryDate,
-          email: result.user.email,
-          updatedAt: new Date()
-        }, { merge: true });
-
-        gapi.client.setToken({ access_token: token });
-        setIsSignedIn(true);
-        loadData();
-      }
-    } catch (error) {
-      console.error("Erreur login Google:", error);
-    }
-  };
-
-  // 3. Rafraîchissement discret au réveil ou périodique
-  useEffect(() => {
-    const checkAndRefreshToken = () => {
-      const expiry = localStorage.getItem('g_expiry');
-      if (expiry && isSignedIn && tokenClient) {
-        const timeLeft = parseInt(expiry) - Date.now();
-        // Si moins de 5 minutes restantes, refresh sans popup
-        if (timeLeft < 300000 && timeLeft > 0) {
-          tokenClient.requestAccessToken({ prompt: 'none' });
-        }
-      }
-    };
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') checkAndRefreshToken();
-    };
-
-    document.addEventListener("visibilitychange", handleVisibility);
-    const interval = setInterval(checkAndRefreshToken, 180000);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      clearInterval(interval);
-    };
-  }, [isSignedIn, tokenClient]);
-
-  // --- INITIALISATION GAPI ET IDENTITY SERVICES ---
+  // 1. Initialisation GAPI et TokenClient
   useEffect(() => {
     const startGapi = async () => {
       await gapi.load("client", async () => {
@@ -167,15 +80,29 @@ function App() {
         callback: async (resp) => {
           if (resp.access_token) {
             const expiry = Date.now() + (resp.expires_in * 1000);
+            
+            // Sauvegarde locale
             localStorage.setItem('g_token', resp.access_token);
             localStorage.setItem('g_expiry', expiry);
+
+            // Sync avec Firebase Auth si nécessaire
+            if (!auth.currentUser) {
+              const credential = GoogleAuthProvider.credential(null, resp.access_token);
+              await signInWithCredential(auth, credential);
+            }
+
+            // Sauvegarde dans Firestore pour l'iPhone
             if (auth.currentUser) {
               await setDoc(doc(db, "user_sessions", auth.currentUser.uid), {
                 g_token: resp.access_token,
-                g_expiry: expiry
+                g_expiry: expiry,
+                updatedAt: new Date()
               }, { merge: true });
             }
+
             gapi.client.setToken({ access_token: resp.access_token });
+            setIsSignedIn(true);
+            loadData();
           }
         },
       });
@@ -194,6 +121,69 @@ function App() {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // 2. Gestion de la session Firebase (Restauration automatique)
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        let token = localStorage.getItem('g_token');
+        let expiry = localStorage.getItem('g_expiry');
+
+        // Récupération Firestore si le local est vide
+        if (!token || (expiry && Date.now() > parseInt(expiry))) {
+          const docSnap = await getDoc(doc(db, "user_sessions", user.uid));
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            token = data.g_token;
+            expiry = data.g_expiry;
+            localStorage.setItem('g_token', token);
+            localStorage.setItem('g_expiry', expiry);
+          }
+        }
+
+        if (token && gapiReady) {
+          gapi.client.setToken({ access_token: token });
+          setIsSignedIn(true);
+          loadData();
+        }
+      } else {
+        setIsSignedIn(false);
+      }
+    });
+    return () => unsubscribe();
+  }, [gapiReady]);
+
+  // 3. Bouton de Connexion (Modifié pour utiliser le tokenClient)
+  const handleLogin = () => {
+    if (tokenClient) {
+      tokenClient.requestAccessToken({ prompt: 'select_account' });
+    }
+  };
+
+  // 4. Rafraîchissement automatique (Silent Refresh)
+  useEffect(() => {
+    const checkAndRefreshToken = () => {
+      const expiry = localStorage.getItem('g_expiry');
+      if (expiry && isSignedIn && tokenClient) {
+        const timeLeft = parseInt(expiry) - Date.now();
+        // Rafraîchir 5 minutes avant l'expiration sans interrompre l'utilisateur
+        if (timeLeft < 300000 && timeLeft > 0) {
+          tokenClient.requestAccessToken({ prompt: 'none' });
+        }
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') checkAndRefreshToken();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    const interval = setInterval(checkAndRefreshToken, 60000);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      clearInterval(interval);
+    };
+  }, [isSignedIn, tokenClient]);
 
   // --- LOGIQUE API ---
   const loadData = async () => {
@@ -330,7 +320,7 @@ function App() {
         ) : activeTab === 'lists' ? (
           <ListsView />
         ) : activeTab === 'settings' ? (
-          <SettingsView calendars={calendars} selectedCalendarIds={selectedCalendarIds} toggleCalendar={(id)=>setSelectedCalendarIds(p=>p.includes(id)?p.filter(i=>i!==id):[...p,id])} handleLogout={()=>{localStorage.clear();window.location.reload();}} />
+          <SettingsView calendars={calendars} selectedCalendarIds={selectedCalendarIds} toggleCalendar={(id)=>setSelectedCalendarIds(p=>p.includes(id)?p.filter(i=>i!==id):[...p,id])} handleLogout={()=>{auth.signOut(); localStorage.clear(); window.location.reload();}} />
         ) : null}
       </Layout>
 
