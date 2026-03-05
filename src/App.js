@@ -91,11 +91,12 @@ function App() {
               await signInWithCredential(auth, credential);
             }
 
-            // Sauvegarde dans Firestore pour l'iPhone
+            // Sauvegarde Firestore pour la persistance long-terme (iPhone/PWA)
             if (auth.currentUser) {
               await setDoc(doc(db, "user_sessions", auth.currentUser.uid), {
                 g_token: resp.access_token,
                 g_expiry: expiry,
+                email: auth.currentUser.email,
                 updatedAt: new Date()
               }, { merge: true });
             }
@@ -122,22 +123,25 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // 2. Gestion de la session Firebase (Restauration automatique)
+  // 2. Gestion de la session Firebase (Restauration automatique multi-comptes)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         let token = localStorage.getItem('g_token');
         let expiry = localStorage.getItem('g_expiry');
+        let email = localStorage.getItem('user_email');
 
-        // Récupération Firestore si le local est vide
-        if (!token || (expiry && Date.now() > parseInt(expiry))) {
+        // Récupération Firestore si le stockage local est vide ou expiré
+        if (!token || !email || (expiry && Date.now() > parseInt(expiry))) {
           const docSnap = await getDoc(doc(db, "user_sessions", user.uid));
           if (docSnap.exists()) {
             const data = docSnap.data();
             token = data.g_token;
             expiry = data.g_expiry;
+            email = data.email;
             localStorage.setItem('g_token', token);
             localStorage.setItem('g_expiry', expiry);
+            localStorage.setItem('user_email', email);
           }
         }
 
@@ -153,26 +157,50 @@ function App() {
     return () => unsubscribe();
   }, [gapiReady]);
 
-  // 3. Bouton de Connexion (Modifié pour utiliser le tokenClient)
-  const handleLogin = () => {
-    if (tokenClient) {
-      tokenClient.requestAccessToken({ prompt: 'select_account' });
+  // 3. Bouton de Connexion (Correction multi-comptes avec sauvegarde email)
+  const handleLogin = async () => {
+    try {
+      // Étape 1 : Connexion Firebase pour obtenir l'email précis de l'utilisateur
+      const result = await signInWithPopup(auth, provider);
+      if (result.user && result.user.email) {
+        localStorage.setItem('user_email', result.user.email);
+        
+        // Étape 2 : Lancement du Token Google
+        if (tokenClient) {
+          // On passe l'email pour s'assurer que Google choisit le bon compte
+          tokenClient.requestAccessToken({ 
+            prompt: 'select_account',
+            login_hint: result.user.email 
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Erreur login Google:", error);
     }
   };
 
-  // 4. Rafraîchissement automatique (Silent Refresh)
+  // 4. Rafraîchissement automatique SILENCIEUX (Spécial PWA iPhone)
   useEffect(() => {
     const checkAndRefreshToken = () => {
       const expiry = localStorage.getItem('g_expiry');
-      if (expiry && isSignedIn && tokenClient) {
+      const email = localStorage.getItem('user_email');
+
+      if (expiry && email && isSignedIn && tokenClient) {
         const timeLeft = parseInt(expiry) - Date.now();
-        // Rafraîchir 5 minutes avant l'expiration sans interrompre l'utilisateur
+        
+        // Si moins de 5 minutes restantes, on demande un nouveau jeton sans popup
+        // L'utilisation de login_hint est CRUCIALE quand on a plusieurs comptes
         if (timeLeft < 300000 && timeLeft > 0) {
-          tokenClient.requestAccessToken({ prompt: 'none' });
+          console.log("Rafraîchissement automatique pour :", email);
+          tokenClient.requestAccessToken({ 
+            prompt: 'none',
+            login_hint: email 
+          });
         }
       }
     };
 
+    // Vérifie au réveil de l'écran (iPhone) ou toutes les minutes
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') checkAndRefreshToken();
     };
@@ -254,19 +282,16 @@ function App() {
         const e = new Date(s.getTime() + taskData.duration * 60000);
         resource.start = { dateTime: s.toISOString() }; resource.end = { dateTime: e.toISOString() };
       }
-      let googleId;
       if (editingEvent) {
-        const res = await gapi.client.calendar.events.patch({
+        await gapi.client.calendar.events.patch({
           calendarId: editingEvent.calId || 'primary',
           eventId: (modType === 'all') ? editingEvent.recurringEventId : editingEvent.id,
           resource: resource
         });
-        googleId = res.result.id;
       } else {
         const res = await gapi.client.calendar.events.insert({ calendarId: 'primary', resource: resource });
-        googleId = res.result.id;
+        await setDoc(doc(db, "task_details", String(res.result.id)), { subtasks: taskData.subtasks || [] }, { merge: true });
       }
-      await setDoc(doc(db, "task_details", String(googleId)), { subtasks: taskData.subtasks || [] }, { merge: true });
       closeAddModal(); fetchAllEvents();
     } catch (e) { console.error(e); }
   };
