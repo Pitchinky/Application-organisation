@@ -17,23 +17,27 @@
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
     <meta http-equiv="Content-Security-Policy" content="
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://www.gstatic.com https://apis.google.com;
-      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      font-src 'self' https://fonts.gstatic.com;
-      frame-src 'self' https://accounts.google.com https://content.googleapis.com https://apis.google.com;
-      img-src 'self' data: https://*.googleusercontent.com https://*.gstatic.com;
-      connect-src 'self' 
-        https://accounts.google.com 
-        https://*.googleapis.com 
-        https://*.firebaseio.com 
-        https://api.openweathermap.org 
-        https://identitytoolkit.googleapis.com 
-        https://securetoken.googleapis.com
-        https://api.iconify.design
-        https://api.simplesvg.com
-        https://api.unisvg.com;
-    ">
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://www.gstatic.com https://apis.google.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com;
+  frame-src 'self' 
+    https://accounts.google.com 
+    https://content.googleapis.com 
+    https://apis.google.com 
+    https://mon-application-organisation.firebaseapp.com;
+  img-src 'self' data: https://*.googleusercontent.com https://*.gstatic.com;
+  connect-src 'self' 
+    https://accounts.google.com 
+    https://*.googleapis.com 
+    https://*.firebaseio.com 
+    https://api.openweathermap.org 
+    https://api.iconify.design
+    https://api.simplesvg.com
+    https://api.unisvg.com
+    https://identitytoolkit.googleapis.com 
+    https://securetoken.googleapis.com;
+">
 
     <title>MyTime</title>
   </head>
