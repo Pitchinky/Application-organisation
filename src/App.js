@@ -1,5 +1,5 @@
 /* global google */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { gapi } from 'gapi-script';
 import { Check, X } from 'lucide-react';
 import './App.css';
@@ -11,7 +11,7 @@ import DesktopLayout from './layouts/DesktopLayout';
 import TimelineView from './views/TimelineView';
 import ListsView from './views/ListsView';
 import InboxView from './views/InboxView';
-import SettingsView from './views/SettingsView'
+import SettingsView from './views/SettingsView';
 
 // COMPOSANTS PARTAGÉS
 import AddTaskModal from './components/shared/AddTaskModal';
@@ -20,9 +20,9 @@ import DeleteModal from './components/shared/DeleteModal';
 import { getDailySummary } from './utils/weatherLogic';
 
 // FIREBASE
-import { db, auth } from './firebaseConfig'; // Import de auth indispensable
+import { db, auth, provider } from './firebaseConfig';
 import { doc, setDoc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
-import { requestForToken, onMessageListener } from './firebaseConfig';
+import { signInWithPopup, onAuthStateChanged, GoogleAuthProvider } from "firebase/auth";
 
 const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
@@ -40,17 +40,16 @@ function App() {
   const [activeTab, setActiveTab] = useState('timeline');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [now, setNow] = useState(new Date()); 
-  const [isSignedIn, setIsSignedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showCalMenu, setShowCalMenu] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
   
-  // États Formulaire Ajout
+  // États Formulaire/Google
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskTime, setNewTaskTime] = useState("12:00");
   const [newTaskDuration, setNewTaskDuration] = useState(60);
-  const [tokenClient, setTokenClient] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
   const [gapiReady, setGapiReady] = useState(false);
   const [tokenClient, setTokenClient] = useState(null);
@@ -184,13 +183,13 @@ function App() {
     }
 
     if (WEATHER_KEY) {
-       navigator.geolocation.getCurrentPosition(async (pos) => {
-          try {
-            const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&units=metric&lang=fr&appid=${WEATHER_KEY}`);
-            const data = await res.json();
-            if (data.list) setForecast(data.list);
-          } catch (e) {}
-       });
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        try {
+          const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&units=metric&lang=fr&appid=${WEATHER_KEY}`);
+          const data = await res.json();
+          if (data.list) setForecast(data.list);
+        } catch (e) {}
+      });
     }
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
@@ -221,7 +220,6 @@ function App() {
         return await Promise.all(r.result.items.map(async (event) => {
           const docSnap = await getDoc(doc(db, "task_details", event.id));
           return { ...event, color: cal?.backgroundColor, calId: calId, subtasks: docSnap.exists() ? docSnap.data().subtasks : [] };
-          return { ...event, color: cal?.backgroundColor, calId: calId, subtasks: docSnap.exists() ? docSnap.data().subtasks : [] };
         }));
       });
       const res = await Promise.all(promises);
@@ -231,7 +229,6 @@ function App() {
 
   useEffect(() => { if (isSignedIn && gapiReady) fetchAllEvents(); }, [fetchAllEvents, isSignedIn, gapiReady]);
 
-  // --- ACTIONS ---
   // --- ACTIONS ---
   const handleToggleSubtask = async (eventId, subtasksArray, subtaskId) => {
     if (!subtasksArray) return;
@@ -243,15 +240,11 @@ function App() {
   const handleSaveRequest = (data) => {
     if (editingEvent?.recurringEventId) setRecModal({ isOpen: true, type: 'edit', data: data });
     else createEvent(data, 'this');
-    if (editingEvent?.recurringEventId) setRecModal({ isOpen: true, type: 'edit', data: data });
-    else createEvent(data, 'this');
   };
 
   const handleDeleteRequest = (eventOrId) => {
     const event = typeof eventOrId === 'string' ? events.find(e => e.id === eventOrId) : eventOrId;
     if (!event) return;
-    if (event.recurringEventId) setRecModal({ isOpen: true, type: 'delete', data: event });
-    else setDeleteModal({ isOpen: true, event: event });
     if (event.recurringEventId) setRecModal({ isOpen: true, type: 'delete', data: event });
     else setDeleteModal({ isOpen: true, event: event });
   };
@@ -300,13 +293,10 @@ function App() {
     } catch (e) { console.error(e); }
   };
 
-  // --- UI UTILS ---
   const handleEditEvent = (event) => {
     if (event.isNewFromGap) {
       setEditingEvent(null); setNewTaskTitle(""); setNewTaskTime(event.startTime); setNewTaskDuration(event.gapDuration);
-      setEditingEvent(null); setNewTaskTitle(""); setNewTaskTime(event.startTime); setNewTaskDuration(event.gapDuration);
     } else {
-      setEditingEvent(event); setNewTaskTitle(event.summary);
       setEditingEvent(event); setNewTaskTitle(event.summary);
       const st = new Date(event.start.dateTime || event.start.date);
       setNewTaskTime(format(st, 'HH:mm'));
@@ -315,7 +305,6 @@ function App() {
     setShowAddModal(true);
   };
 
-  const closeAddModal = () => { setShowAddModal(false); setEditingEvent(null); setNewTaskTitle(""); };
   const closeAddModal = () => { setShowAddModal(false); setEditingEvent(null); setNewTaskTitle(""); };
   const toggleTaskCompletion = (id) => { 
     const n = {...completedEvents, [id]:!completedEvents[id]}; setCompletedEvents(n); 
@@ -338,17 +327,14 @@ function App() {
           />
         ) : activeTab === 'inbox' ? (
           <InboxView onPlanTask={(title) => { setNewTaskTitle(title); setShowAddModal(true); }} />
-          <InboxView onPlanTask={(title) => { setNewTaskTitle(title); setShowAddModal(true); }} />
         ) : activeTab === 'lists' ? (
           <ListsView />
         ) : activeTab === 'settings' ? (
-          <SettingsView calendars={calendars} selectedCalendarIds={selectedCalendarIds} toggleCalendar={(id)=>setSelectedCalendarIds(p=>p.includes(id)?p.filter(i=>i!==id):[...p,id])} handleLogout={()=>{localStorage.clear();window.location.reload();}} />
           <SettingsView calendars={calendars} selectedCalendarIds={selectedCalendarIds} toggleCalendar={(id)=>setSelectedCalendarIds(p=>p.includes(id)?p.filter(i=>i!==id):[...p,id])} handleLogout={()=>{localStorage.clear();window.location.reload();}} />
         ) : null}
       </Layout>
 
       {showAddModal && (
-        <AddTaskModal onClose={closeAddModal} currentDate={currentDate} newTaskTitle={newTaskTitle} setNewTaskTitle={setNewTaskTitle} newTaskTime={newTaskTime} setNewTaskTime={setNewTaskTime} newTaskDuration={newTaskDuration} setNewTaskDuration={setNewTaskDuration} onAdd={handleSaveRequest} editingEvent={editingEvent} />
         <AddTaskModal onClose={closeAddModal} currentDate={currentDate} newTaskTitle={newTaskTitle} setNewTaskTitle={setNewTaskTitle} newTaskTime={newTaskTime} setNewTaskTime={setNewTaskTime} newTaskDuration={newTaskDuration} setNewTaskDuration={setNewTaskDuration} onAdd={handleSaveRequest} editingEvent={editingEvent} />
       )}
 
@@ -362,7 +348,6 @@ function App() {
       />
 
       <DeleteModal 
-        isOpen={deleteModal.isOpen} taskTitle={deleteModal.event?.summary || ""}
         isOpen={deleteModal.isOpen} taskTitle={deleteModal.event?.summary || ""}
         onClose={() => setDeleteModal({ isOpen: false, event: null })}
         onConfirm={() => { deleteSingleEvent(deleteModal.event.id, 'this'); setDeleteModal({ isOpen: false, event: null }); }}
