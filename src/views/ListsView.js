@@ -248,7 +248,7 @@ export default function ListsView() {
                 }}
               >
                 <sec.icon size={14} />
-                <span>{sec.label}</span>
+                
               </button>
             ))}
           </div>
