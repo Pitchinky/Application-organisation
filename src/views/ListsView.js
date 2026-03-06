@@ -1,5 +1,5 @@
 /* global gapi, google */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, ShoppingCart, Inbox, List, CheckCircle2, Circle, Trash2, ChevronLeft, X,
   Heart, Star, Book, Coffee, Dumbbell, Briefcase, Music, Plane, Car, 
@@ -218,20 +218,19 @@ export default function ListsView() {
                     <sec.icon size={14} style={{ marginRight: 8 }} />
                     {sec.label}
                   </h3>
-                  {secItems.map(item => <ItemRow item={item} />)}
+                  {secItems.map(item => <ItemRow key={item.id} item={item} />)}
                 </div>
               );
             })}
-            {/* Cas particulier pour les items terminés en courses */}
             {(activeList.items || []).some(i => i.completed) && (
               <div className="list-section completed-section">
                 <h3 className="list-section-title">Déjà pris</h3>
-                {(activeList.items || []).filter(i => i.completed).map(item => <ItemRow item={item} />)}
+                {(activeList.items || []).filter(i => i.completed).map(item => <ItemRow key={item.id} item={item} />)}
               </div>
             )}
           </>
         ) : (
-          (activeList.items || []).map(item => <ItemRow item={item} />)
+          (activeList.items || []).map(item => <ItemRow key={item.id} item={item} />)
         )}
       </div>
 
