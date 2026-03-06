@@ -1,45 +1,74 @@
 import React, { useState, useEffect } from 'react';
-// On remplace Tray par Inbox ici
-import { Plus, ShoppingCart, Inbox, List, CheckCircle2, Circle, Trash2, ChevronLeft } from 'lucide-react';
+import { 
+  Plus, ShoppingCart, Inbox, List, CheckCircle2, Circle, Trash2, ChevronLeft, X,
+  Heart, Star, Book, Coffee, Dumbbell, Briefcase, Music, Plane, Car, 
+  Home, Pizza, Gift, Camera, Code, Smartphone, Wallet, Tent, Map, 
+  GraduationCap, Palette, Utensils
+} from 'lucide-react';
 import { db } from '../firebaseConfig';
-import { collection, doc, setDoc, onSnapshot, query } from "firebase/firestore";
+import { collection, doc, setDoc, onSnapshot, query, deleteDoc } from "firebase/firestore";
 import './ListsView.css';
+
+// 1. Dictionnaire des icônes pour le mapping Firebase -> Composant
+const ICONS_MAP = {
+  list: List, cart: ShoppingCart, inbox: Inbox, heart: Heart, star: Star,
+  book: Book, coffee: Coffee, gym: Dumbbell, work: Briefcase, music: Music,
+  travel: Plane, car: Car, home: Home, food: Pizza, gift: Gift,
+  photo: Camera, code: Code, tech: Smartphone, money: Wallet, camp: Tent,
+  map: Map, study: GraduationCap, art: Palette, restaurant: Utensils
+};
+
+const PRESET_COLORS = ["#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#007AFF", "#5856D6", "#AF52DE"];
 
 export default function ListsView() {
   const [lists, setLists] = useState([]);
-  const [activeListId, setActiveListId] = useState(null); // null = menu principal
+  const [activeListId, setActiveListId] = useState(null);
   const [newItemText, setNewItemText] = useState("");
 
-  // 1. Charger toutes les listes
+  // États pour la création d'une nouvelle liste
+  const [showModal, setShowModal] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [newListColor, setNewListColor] = useState("#007AFF");
+  const [newListIcon, setNewListIcon] = useState("list");
+
   useEffect(() => {
     const q = query(collection(db, "lists"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      // Initialisation si la base est vide
-      if (data.length === 0) {
-        setupInitialLists();
-      } else {
-        setLists(data);
-      }
+      setLists(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsubscribe();
   }, []);
 
-  const setupInitialLists = async () => {
-    
-    // Création de la liste de Courses
-    await setDoc(doc(db, "lists", "courses"), { 
-      name: "Courses", 
-      icon: "cart", 
-      items: [], 
-      color: "#34C759" 
+  // Helper pour afficher l'icône dynamique
+  const IconRenderer = ({ iconName, color, size = 24 }) => {
+    const IconComponent = ICONS_MAP[iconName] || List;
+    return <IconComponent color={color} size={size} />;
+  };
+
+  const handleCreateList = async () => {
+    if (!newListName.trim()) return;
+    const id = Date.now().toString();
+    await setDoc(doc(db, "lists", id), {
+      name: newListName,
+      color: newListColor,
+      icon: newListIcon,
+      items: []
     });
+    setNewListName("");
+    setNewListIcon("list");
+    setShowModal(false);
+  };
+
+  const handleDeleteList = async (id, e) => {
+    e.stopPropagation();
+    if (window.confirm("Supprimer cette liste définitivement ?")) {
+      await deleteDoc(doc(db, "lists", id));
+    }
   };
 
   const activeList = lists.find(l => l.id === activeListId);
 
-  // 2. Gestion des items
+  // --- LOGIQUE ITEMS ---
   const addItem = async (e) => {
     e.preventDefault();
     if (!newItemText.trim() || !activeList) return;
@@ -61,7 +90,6 @@ export default function ListsView() {
     await setDoc(doc(db, "lists", activeListId), { ...activeList, items: updatedItems });
   };
 
-  // 3. Rendu du menu principal
   if (!activeListId) {
     return (
       <div className="lists-container">
@@ -69,11 +97,13 @@ export default function ListsView() {
         <div className="lists-grid">
           {lists.map(list => (
             <div key={list.id} className="list-card" onClick={() => setActiveListId(list.id)}>
-              <div className="list-card-icon" style={{ backgroundColor: list.color + '20' }}>
-                {/* Correction de l'icône ici : Inbox au lieu de Tray */}
-                {list.icon === 'inbox' ? <Inbox color={list.color} /> : 
-                 list.icon === 'cart' ? <ShoppingCart color={list.color} /> : 
-                 <List color={list.color} />}
+              <div className="list-card-top">
+                <div className="list-card-icon" style={{ backgroundColor: list.color + '20' }}>
+                  <IconRenderer iconName={list.icon} color={list.color} />
+                </div>
+                <button className="delete-list-x" onClick={(e) => handleDeleteList(list.id, e)}>
+                    <X size={14} color="#AEAEB2" />
+                </button>
               </div>
               <div className="list-card-info">
                 <span className="list-name">{list.name}</span>
@@ -81,23 +111,83 @@ export default function ListsView() {
               </div>
             </div>
           ))}
-          <div className="list-card add-new">
-            <Plus color="#8E8E93" />
+
+          <div className="list-card add-new" onClick={() => setShowModal(true)}>
+            <div className="plus-circle"><Plus color="#007AFF" /></div>
             <span>Nouvelle liste</span>
           </div>
         </div>
+
+        {/* MODAL CENTRÉ */}
+        {showModal && (
+          <div className="modal-overlay" onClick={() => setShowModal(false)}>
+            <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <button className="modal-cancel" onClick={() => setShowModal(false)}>Annuler</button>
+                <h2>Nouvelle liste</h2>
+                <button className="modal-done" onClick={handleCreateList} disabled={!newListName.trim()}>OK</button>
+              </div>
+              
+              <div className="modal-body scrollable">
+                <div className="icon-preview" style={{ backgroundColor: newListColor }}>
+                    <IconRenderer iconName={newListIcon} color="white" size={40} />
+                </div>
+                
+                <input 
+                    type="text" 
+                    className="modal-input" 
+                    placeholder="Nom de la liste"
+                    value={newListName}
+                    onChange={(e) => setNewListName(e.target.value)}
+                    autoFocus
+                />
+
+                <div className="selector-label">Couleur</div>
+                <div className="color-selector">
+                    {PRESET_COLORS.map(color => (
+                        <div 
+                            key={color} 
+                            className={`color-dot ${newListColor === color ? 'active' : ''}`}
+                            style={{ backgroundColor: color }}
+                            onClick={() => setNewListColor(color)}
+                        />
+                    ))}
+                </div>
+
+                <div className="selector-label">Icône</div>
+                <div className="icon-library-grid">
+                    {Object.keys(ICONS_MAP).map(iconKey => {
+                        const IconComp = ICONS_MAP[iconKey];
+                        return (
+                          <div 
+                            key={iconKey} 
+                            className={`icon-item ${newListIcon === iconKey ? 'active' : ''}`}
+                            onClick={() => setNewListIcon(iconKey)}
+                            style={{ color: newListIcon === iconKey ? newListColor : '#8E8E93' }}
+                          >
+                            <IconComp size={22} />
+                          </div>
+                        );
+                    })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
-  // 4. Rendu d'une liste spécifique
   return (
     <div className="active-list-view">
       <div className="list-header">
         <button className="back-btn" onClick={() => setActiveListId(null)}>
           <ChevronLeft size={28} />
         </button>
-        <h1 style={{ color: activeList.color }}>{activeList.name}</h1>
+        <div className="header-title-group">
+            <IconRenderer iconName={activeList.icon} color={activeList.color} size={32} />
+            <h1 style={{ color: activeList.color }}>{activeList.name}</h1>
+        </div>
       </div>
 
       <div className="items-list">
