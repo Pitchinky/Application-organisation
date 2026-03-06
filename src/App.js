@@ -27,7 +27,7 @@ import { signInWithPopup, onAuthStateChanged, GoogleAuthProvider, signInWithCred
 const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
 const WEATHER_KEY = process.env.REACT_APP_WEATHER_API_KEY;
-const SCOPES = "https://www.googleapis.com/auth/calendar.events";
+const SCOPES = "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events";
 const DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest";
 
 function App() {
@@ -78,6 +78,20 @@ function App() {
         client_id: CLIENT_ID,
         scope: SCOPES,
         callback: async (resp) => {
+          if (resp.error) {
+            console.error('Erreur OAuth Google:', resp.error, resp.error_subtype);
+            // Fallback : Si silent refresh échoue (ex. multi-comptes ou expiration), re-prompt l'utilisateur
+            if (resp.error === 'access_denied' || resp.error === 'immediate_failed' || resp.error === 'popup_closed') {
+              // Utilisez l'email stocké pour hint, et forcez un prompt
+              const email = localStorage.getItem('user_email');
+              tokenClient.requestAccessToken({ 
+                prompt: 'consent',  // Ou 'select_account' si besoin de choisir compte
+                login_hint: email 
+              });
+            }
+            // Optionnel : Affichez un toast UI comme "Veuillez réautoriser l'accès Google"
+            return;
+          }
           if (resp.access_token) {
             const expiry = Date.now() + (resp.expires_in * 1000);
             
@@ -190,7 +204,7 @@ function App() {
         
         // Si moins de 5 minutes restantes, on demande un nouveau jeton sans popup
         // L'utilisation de login_hint est CRUCIALE quand on a plusieurs comptes
-        if (timeLeft < 300000 && timeLeft > 0) {
+        if (timeLeft < 300000) {
           console.log("Rafraîchissement automatique pour :", email);
           tokenClient.requestAccessToken({ 
             prompt: 'none',
@@ -247,12 +261,16 @@ function App() {
 
   useEffect(() => { if (isSignedIn && gapiReady) fetchAllEvents(); }, [fetchAllEvents, isSignedIn, gapiReady]);
 
-  // --- ACTIONS ---
+  // --- LOGIQUE ACTIONS (Subtasks, Edit, Delete, etc.) ---
   const handleToggleSubtask = async (eventId, subtasksArray, subtaskId) => {
     if (!subtasksArray) return;
-    const newSubtasks = subtasksArray.map(sub => sub.id === subtaskId ? { ...sub, completed: !sub.completed } : sub);
+    const newSubtasks = subtasksArray.map(sub => 
+      sub.id === subtaskId ? { ...sub, completed: !sub.completed } : sub
+    );
     setEvents(prev => prev.map(ev => ev.id === eventId ? { ...ev, subtasks: newSubtasks } : ev));
-    try { await updateDoc(doc(db, "task_details", eventId), { subtasks: newSubtasks }); } catch (e) {}
+    try {
+      await updateDoc(doc(db, "task_details", eventId), { subtasks: newSubtasks });
+    } catch (e) {}
   };
 
   const handleSaveRequest = (data) => {
@@ -282,16 +300,20 @@ function App() {
         const e = new Date(s.getTime() + taskData.duration * 60000);
         resource.start = { dateTime: s.toISOString() }; resource.end = { dateTime: e.toISOString() };
       }
+
+      let googleId;
       if (editingEvent) {
-        await gapi.client.calendar.events.patch({
+        const res = await gapi.client.calendar.events.patch({
           calendarId: editingEvent.calId || 'primary',
           eventId: (modType === 'all') ? editingEvent.recurringEventId : editingEvent.id,
           resource: resource
         });
+        googleId = res.result.id;
       } else {
         const res = await gapi.client.calendar.events.insert({ calendarId: 'primary', resource: resource });
-        await setDoc(doc(db, "task_details", String(res.result.id)), { subtasks: taskData.subtasks || [] }, { merge: true });
+        googleId = res.result.id;
       }
+      await setDoc(doc(db, "task_details", String(googleId)), { subtasks: taskData.subtasks || [] }, { merge: true });
       closeAddModal(); fetchAllEvents();
     } catch (e) { console.error(e); }
   };
@@ -334,12 +356,13 @@ function App() {
       <Layout activeTab={activeTab} setActiveTab={setActiveTab} setShowAddModal={setShowAddModal} setShowCalMenu={setShowCalMenu} showCalMenu={showCalMenu}>
         {activeTab === 'timeline' ? (
           <TimelineView 
-            forecast={forecast} events={events.filter(e => e.start?.dateTime)} currentDate={currentDate} setCurrentDate={setCurrentDate}
-            now={now} completedEvents={completedEvents} toggleTaskCompletion={toggleTaskCompletion} onToggleSubtask={handleToggleSubtask}
-            isSignedIn={isSignedIn} handleLogin={handleLogin} isLoading={isLoading} todaySummary={todaySummary} calendars={calendars} 
-            showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu} setShowAddModal={setShowAddModal} onDeleteEvent={handleDeleteRequest} 
-            onEditEvent={handleEditEvent} allDayEvents={events.filter(e => !e.start?.dateTime)} 
-          />
+          forecast={forecast} events={events.filter(e => e.start?.dateTime)} currentDate={currentDate} setCurrentDate={setCurrentDate}
+          now={now} completedEvents={completedEvents} toggleTaskCompletion={toggleTaskCompletion} 
+          onToggleSubtask={handleToggleSubtask}
+          isSignedIn={isSignedIn} handleLogin={()=>tokenClient?.requestAccessToken({ prompt: 'select_account' })} isLoading={isLoading} todaySummary={todaySummary} 
+          calendars={calendars} showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu} setShowAddModal={setShowAddModal} 
+          onDeleteEvent={handleDeleteRequest} onEditEvent={handleEditEvent} allDayEvents={events.filter(e => !e.start?.dateTime)} 
+        />
         ) : activeTab === 'inbox' ? (
           <InboxView onPlanTask={(title) => { setNewTaskTitle(title); setShowAddModal(true); }} />
         ) : activeTab === 'lists' ? (
