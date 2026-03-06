@@ -4,15 +4,17 @@
   --ios-blue: #007AFF;
 }
 
-/* --- CONTENEUR PRINCIPAL (Menu) --- */
+/* --- CONTENEUR PRINCIPAL (Menu "Mes Listes") --- */
 .lists-container {
   display: flex;
   flex-direction: column;
-  /* Utilise 100% de la hauteur disponible au-dessus de ta Nav Bar */
-  height: 100%; 
-  width: 100%;
+  position: fixed; /* Bloque l'application sur l'écran */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 80px; /* IMPORTANT: Ajuste cette valeur selon la hauteur de ta Nav Bar */
   background: var(--ios-bg);
-  overflow: hidden; /* Bloque le scroll global pour fixer le titre */
+  overflow: hidden; /* Empêche tout l'écran de bouger */
 }
 
 .main-title { 
@@ -22,12 +24,12 @@
   margin: 0;
   color: #000;
   background: var(--ios-bg);
+  flex-shrink: 0; /* Empêche le titre de s'écraser */
   z-index: 10;
-  flex-shrink: 0; /* Empêche le titre de se réduire */
 }
 
 .lists-grid {
-  flex: 1; /* Prend tout l'espace disponible entre le titre et le bas */
+  flex: 1; /* Prend tout l'espace disponible au milieu */
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
@@ -40,8 +42,11 @@
 .active-list-view { 
   display: flex;
   flex-direction: column;
-  height: 100%; /* S'adapte au conteneur parent */
-  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 80px; /* Doit être identique à la valeur du dessus */
   background: white; 
   overflow: hidden;
 }
@@ -53,27 +58,26 @@
   gap: 15px; 
   background: white;
   border-bottom: 1px solid #F2F2F7;
-  z-index: 10;
   flex-shrink: 0; /* Reste fixe en haut */
+  z-index: 10;
 }
 
 .items-list { 
-  flex: 1; /* Prend tout l'espace entre le header et le footer */
+  flex: 1; /* Prend l'espace central et scrolle */
   padding: 0 20px; 
-  overflow-y: auto; /* Seule la liste scrolle */
+  overflow-y: auto; 
   -webkit-overflow-scrolling: touch;
 }
 
 .quick-add-container {
   background: white;
   border-top: 1px solid #F2F2F7;
-  /* Gère l'espace de sécurité iPhone sans dépasser sur ta Nav Bar */
-  padding-bottom: env(safe-area-inset-bottom, 10px); 
-  z-index: 10;
+  padding-bottom: 5px;
   flex-shrink: 0; /* Reste fixe en bas */
+  z-index: 10;
 }
 
-/* --- TES DESIGNS (INCHANGÉS) --- */
+/* --- TES DESIGNS (GARDÉS À L'IDENTIQUE) --- */
 .list-card {
   background: white;
   padding: 16px; padding-bottom: 22px; border-radius: 20px;
@@ -115,7 +119,7 @@
 /* DESIGN DES ITEMS */
 .header-title-group { display: flex; align-items: center; gap: 12px; }
 .back-btn { border: none; background: none; color: #007AFF; cursor: pointer; }
-.list-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 25px 0 8px 5px; display: flex; align-items: center; color: #8E8E93; }
+.list-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 25px 0 8px 5px; display: flex; align-items: center; color: #8E8E93; position: sticky; top: 0; background: white; z-index: 5; }
 .completed-section { opacity: 0.7; margin-top: 30px; border-top: 1px dashed #F2F2F7; }
 .list-item { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid #F2F2F7; }
 .item-main { display: flex; align-items: center; gap: 12px; flex: 1; cursor: pointer; }
