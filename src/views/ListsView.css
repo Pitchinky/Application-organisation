@@ -12,9 +12,25 @@
   top: 0;
   left: 0;
   right: 0;
-  bottom: 80px; /* IMPORTANT: Ajuste cette valeur selon la hauteur de ta Nav Bar */
+  bottom: 78px; /* IMPORTANT: Ajuste cette valeur selon la hauteur de ta Nav Bar */
   background: var(--ios-bg);
   overflow: hidden; /* Empêche tout l'écran de bouger */
+}
+
+/* Responsive pour desktop/web */
+@media (min-width: 768px) {
+  .lists-container {
+    position: relative; /* Intègre dans main content, à côté de sidebar */
+    top: auto;
+    bottom: 0;
+    left: auto;
+    right: auto;
+    height: 100vh; /* Ajuste pour header/sidebar, assume 60px header si présent */
+    max-width: none; /* Pleine largeur du main */
+    margin: 0;
+    overflow: auto; /* Scroll si besoin */
+    padding: 0 24px; /* Padding desktop */
+  }
 }
 
 .main-title { 
@@ -29,7 +45,6 @@
 }
 
 .lists-grid {
-  flex: 1; /* Prend tout l'espace disponible au milieu */
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
@@ -50,6 +65,20 @@
   background: white; 
   overflow: hidden;
 }
+
+@media (min-width: 768px) {
+  .active-list-view { 
+    position: relative; /* Intègre dans main content, à côté de sidebar */
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100vh; /* Ajuste pour header/sidebar, assume 60px header si présent */
+    max-width: none; /* Pleine largeur du main */
+    margin: 0;
+    overflow: auto; /* Scroll si besoin */
+    padding: 0 24px; /* Padding desktop */
+}}
 
 .list-header { 
   padding: env(safe-area-inset-top, 50px) 20px 15px 20px;
