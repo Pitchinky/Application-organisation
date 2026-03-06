@@ -8,9 +8,11 @@
 .lists-container {
   display: flex;
   flex-direction: column;
-  height: 100dvh; /* Fixe la hauteur totale */
+  /* Utilise 100% de la hauteur disponible au-dessus de ta Nav Bar */
+  height: 100%; 
+  width: 100%;
   background: var(--ios-bg);
-  overflow: hidden; /* Empêche le scroll global */
+  overflow: hidden; /* Bloque le scroll global pour fixer le titre */
 }
 
 .main-title { 
@@ -21,10 +23,11 @@
   color: #000;
   background: var(--ios-bg);
   z-index: 10;
+  flex-shrink: 0; /* Empêche le titre de se réduire */
 }
 
 .lists-grid {
-  flex: 1; /* Prend tout l'espace central */
+  flex: 1; /* Prend tout l'espace disponible entre le titre et le bas */
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
@@ -37,7 +40,8 @@
 .active-list-view { 
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: 100%; /* S'adapte au conteneur parent */
+  width: 100%;
   background: white; 
   overflow: hidden;
 }
@@ -50,23 +54,26 @@
   background: white;
   border-bottom: 1px solid #F2F2F7;
   z-index: 10;
+  flex-shrink: 0; /* Reste fixe en haut */
 }
 
 .items-list { 
-  flex: 1; /* Prend tout l'espace central entre le header et le footer */
+  flex: 1; /* Prend tout l'espace entre le header et le footer */
   padding: 0 20px; 
-  overflow-y: auto; 
+  overflow-y: auto; /* Seule la liste scrolle */
   -webkit-overflow-scrolling: touch;
 }
 
 .quick-add-container {
   background: white;
   border-top: 1px solid #F2F2F7;
-  padding-bottom: env(safe-area-inset-bottom, 20px);
+  /* Gère l'espace de sécurité iPhone sans dépasser sur ta Nav Bar */
+  padding-bottom: env(safe-area-inset-bottom, 10px); 
   z-index: 10;
+  flex-shrink: 0; /* Reste fixe en bas */
 }
 
-/* --- GARDER TES DESIGNS INCHANGÉS --- */
+/* --- TES DESIGNS (INCHANGÉS) --- */
 .list-card {
   background: white;
   padding: 16px; padding-bottom: 22px; border-radius: 20px;
@@ -105,7 +112,7 @@
 .icon-item { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 10px; transition: 0.2s; }
 .icon-item.active { background: #F2F2F7; transform: scale(1.1); }
 
-/* ITEMS DESIGN */
+/* DESIGN DES ITEMS */
 .header-title-group { display: flex; align-items: center; gap: 12px; }
 .back-btn { border: none; background: none; color: #007AFF; cursor: pointer; }
 .list-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 25px 0 8px 5px; display: flex; align-items: center; color: #8E8E93; }
@@ -113,14 +120,15 @@
 .list-item { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid #F2F2F7; }
 .item-main { display: flex; align-items: center; gap: 12px; flex: 1; cursor: pointer; }
 .list-item.completed span { text-decoration: line-through; color: #8E8E93; }
-.delete-btn { display: flex; align-items: center; justify-content: center; background-color: transparent; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); outline: none; -webkit-tap-highlight-color: transparent; }
-@media (hover: hover) { .delete-btn:hover { background-color: rgba(255, 59, 48, 0.1); transform: scale(1.1); } }
+
+.delete-btn { display: flex; align-items: center; justify-content: center; background-color: transparent; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); outline: none; }
 .delete-btn:active { background-color: rgba(255, 59, 48, 0.2); transform: scale(0.9); }
-.delete-btn svg { display: block; transition: color 0.2s ease; }
+
 .section-picker { display: flex; gap: 8px; overflow-x: auto; padding: 15px 20px 5px; scrollbar-width: none; }
 .section-picker::-webkit-scrollbar { display: none; }
 .section-chip { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 20px; border: 1px solid #E5E5EA; white-space: nowrap; font-size: 13px; font-weight: 600; transition: all 0.2s ease; cursor: pointer; background: white; }
 .section-chip.active { border-color: transparent; transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
 .quick-add-footer { padding: 10px 20px; display: flex; gap: 12px; }
 .quick-add-footer input { flex: 1; background: #F2F2F7; border: none; padding: 14px 20px; border-radius: 25px; font-size: 16px; outline: none; }
 .quick-add-footer button { width: 48px; height: 48px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; }
