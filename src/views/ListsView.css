@@ -34,7 +34,7 @@
 }
 
 .main-title { 
-  font-size: 34px; 
+  font-size: 26px; 
   font-weight: 800; 
   padding: env(safe-area-inset-top, 20px) 20px 10px 20px;
   margin: 0;
@@ -42,6 +42,19 @@
   background: var(--ios-bg);
   flex-shrink: 0; /* Empêche le titre de s'écraser */
   z-index: 10;
+}
+
+@media (min-width: 768px) {
+  .main-title { 
+    font-size: 34px; 
+    font-weight: 800; 
+    padding: 20px 20px 10px 20px;
+    margin: 10;
+    color: #000;
+    background: var(--ios-bg);
+    flex-shrink: 0; /* Empêche le titre de s'écraser */
+    z-index: 10;
+  }
 }
 
 .lists-grid {
@@ -81,7 +94,7 @@
 }}
 
 .list-header { 
-  padding: env(safe-area-inset-top, 50px) 20px 15px 20px;
+  padding: env(safe-area-inset-top, 50px) 20px 0px 10px;
   display: flex; 
   align-items: center; 
   gap: 15px; 
@@ -89,7 +102,23 @@
   border-bottom: 1px solid #F2F2F7;
   flex-shrink: 0; /* Reste fixe en haut */
   z-index: 10;
+  font-size: 15px; 
 }
+
+@media (min-width: 768px) {
+  .list-header { 
+    padding: 0px 20px 0px 10px;
+    display: flex; 
+    align-items: center; 
+    gap: 15px; 
+    background: white;
+    border-bottom: 1px solid #F2F2F7;
+    flex-shrink: 0; /* Reste fixe en haut */
+    z-index: 10;
+    font-size:20px; 
+  }
+}
+
 
 .items-list { 
   flex: 1; /* Prend l'espace central et scrolle */
@@ -163,6 +192,8 @@
 .section-chip.active { border-color: transparent; transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 
 .quick-add-footer { padding: 10px 20px; display: flex; gap: 12px; }
-.quick-add-footer input { flex: 1; background: #F2F2F7; border: none; padding: 14px 20px; border-radius: 25px; font-size: 16px; outline: none; }
-.quick-add-footer button { width: 48px; height: 48px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; }
+@media (min-width: 768px) {q.quick-add-footer input { flex: 1; background: #F2F2F7; border: none; padding: 14px 20px; border-radius: 25px; font-size: 16px; outline: none; }}
+.quick-add-footer input { flex: 1; background: #F2F2F7; border: none; padding: 14px 20px; border-radius: 25px; font-size: 16px; outline: none; height: 35px; }
+.quick-add-footer button { width: 35px; height: 35px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; }
+@media (min-width: 768px) {quick-add-footer button { width: 48px; height: 48px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; }}
 .quick-add-footer button:active { transform: scale(0.9); }
