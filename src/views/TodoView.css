@@ -1,30 +1,52 @@
+/* --- CONFIGURATION GLOBALE --- */
 .todo-page {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  background-color: #F2F2F7; /* Gris iOS clair */
+  position: fixed; /* Bloque l'application comme sur ListsView */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 78px; /* Laisse la place pour ta Nav Bar */
+  background-color: #F2F2F7;
+  overflow: hidden;
 }
 
-/* HEADER */
+/* Version Desktop */
+@media (min-width: 768px) {
+  .todo-page {
+    position: relative;
+    top: auto;
+    bottom: 0;
+    left: auto;
+    right: auto;
+    height: 100vh;
+    max-width: 800px;
+    margin: 0 auto;
+    border-left: 1px solid #E5E5EA;
+    border-right: 1px solid #E5E5EA;
+  }
+}
+
+/* --- HEADER FIXE --- */
 .todo-header-premium {
-  padding: env(safe-area-inset-top, 40px) 20px 20px;
+  padding: env(safe-area-inset-top, 20px) 20px 10px;
   background-color: #F2F2F7;
-  flex-shrink: 0;
+  flex-shrink: 0; /* Empêche le header de s'écraser */
+  z-index: 10;
 }
 
 .todo-app-title {
-  font-size: 34px;
+  font-size: 28px; /* Réduit un peu pour iPhone comme ListsView */
   font-weight: 800;
-  margin: 0 0 20px 0;
+  margin: 0 0 15px 0;
   letter-spacing: -0.5px;
 }
 
-/* SEGMENTED CONTROL (Le sélecteur d'onglets) */
 .segmented-picker {
   display: flex;
   background: #E3E3E8;
   padding: 2px;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .segmented-picker button {
@@ -39,34 +61,34 @@
   font-size: 14px;
   font-weight: 600;
   color: #8E8E93;
-  border-radius: 10px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
 }
 
 .segmented-picker button.active {
   background: #FFFFFF;
   color: #007AFF;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-/* SCROLL AREA */
+/* --- ZONE DE SCROLL (MILIEU) --- */
 .todo-scroll-area {
   flex: 1;
   overflow-y: auto;
-  padding: 0 16px 120px; /* Espace en bas pour la barre d'ajout */
+  padding: 10px 16px 20px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .todo-sections-gap {
   display: flex;
   flex-direction: column;
-  gap: 25px;
+  gap: 20px;
 }
 
 .section-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: #8E8E93;
-  margin: 0 0 8px 8px;
+  margin: 0 0 8px 5px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -75,88 +97,87 @@
 
 .section-label.overdue { color: #FF3B30; }
 
-/* CARTES DE TACHES */
+/* --- CARTES --- */
 .todo-card {
   background: white;
   border-radius: 16px;
-  padding: 16px;
+  padding: 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  transition: transform 0.1s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
 }
-
-.todo-card:active { transform: scale(0.98); }
 
 .todo-card-left {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1;
 }
 
 .todo-card-text {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 500;
   color: #1C1C1E;
 }
 
-.todo-card-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
+.todo-card.is-done {
+  opacity: 0.5;
+}
+
+.todo-card.is-done .todo-card-text {
+  text-decoration: line-through;
 }
 
 .meta-tag {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   display: flex;
   align-items: center;
   gap: 3px;
+  margin-top: 2px;
 }
 
-.overdue-dot {
-  font-size: 11px;
-  color: #FF3B30;
-  font-weight: 700;
+/* --- ACTIONS --- */
+.todo-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.todo-empty-card {
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px dashed #C7C7CC;
-  border-radius: 16px;
-  padding: 30px;
-  text-align: center;
-  color: #8E8E93;
-  font-size: 15px;
+.action-button {
+  background: #F2F2F7;
+  border: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* QUICK ADD BAR */
+/* --- BARRE D'AJOUT RAPIDE (FIXE EN BAS) --- */
 .todo-quick-add {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 20px 20px calc(env(safe-area-inset-bottom, 20px) + 10px);
-  background: linear-gradient(to top, #F2F2F7 80%, rgba(242, 242, 247, 0));
+  background: white;
+  border-top: 1px solid #F2F2F7;
+  padding: 10px 16px env(safe-area-inset-bottom, 10px);
+  flex-shrink: 0;
 }
 
 .quick-add-form {
-  background: white;
-  border-radius: 30px;
-  padding: 8px 8px 8px 16px;
+  background: #F2F2F7;
+  border-radius: 22px;
+  padding: 6px 6px 6px 14px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  gap: 10px;
 }
 
 .add-icon-circle {
   background: #007AFF;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -168,44 +189,24 @@
   background: transparent;
   flex: 1;
   font-size: 16px;
-  font-weight: 500;
   outline: none;
-}
-
-/* --- ÉTAT TERMINÉ --- */
-.todo-card.is-done {
-  opacity: 0.6;
-}
-
-.todo-card.is-done .todo-card-text {
-  text-decoration: line-through;
-  color: #8E8E93;
-}
-
-/* --- BOUTON RANGER --- */
-.move-button {
-  background: #F2F2F7;
-  border: none;
-  width: 36px;
   height: 36px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s;
 }
 
-.move-button:active { background: #E5E5EA; }
-
-/* --- MODAL DE DÉPLACEMENT --- */
-.move-modal-overlay {
+/* --- MODALS (FIXÉS SUR TOUT L'ÉCRAN) --- */
+.move-modal-overlay, .confirm-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.4);
   z-index: 2000;
   display: flex;
-  align-items: flex-end; /* Style tiroir iOS */
+  align-items: flex-end;
+}
+
+.confirm-modal-overlay {
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
 }
 
 .move-modal {
@@ -213,171 +214,51 @@
   width: 100%;
   border-radius: 20px 20px 0 0;
   padding: 20px;
-  animation: slideUp 0.3s ease-out;
-  max-height: 70vh;
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-.move-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.move-modal-header h3 { margin: 0; font-size: 20px; font-weight: 700; }
-.move-modal-header button { background: #F2F2F7; border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
-
-.move-list-options {
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.move-option {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 12px;
-  background: #F9F9FB;
-  border: none;
-  border-radius: 12px;
-  text-align: left;
-  font-size: 16px;
-  font-weight: 600;
-  transition: background 0.2s;
-}
-
-.move-option:active { background: #E5E5EA; }
-
-.move-option-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* --- ÉTAT TERMINÉ (BARRE) --- */
-.todo-card.is-done {
-  opacity: 0.6;
-}
-
-.todo-card.is-done .todo-card-text {
-  text-decoration: line-through;
-  color: #8E8E93;
-}
-
-/* --- ACTIONS SUR LA CARTE --- */
-.todo-card-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.action-button {
-  background: #F2F2F7;
-  border: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-button.move:active { background: #E5E5EA; }
-.action-button.delete:active { background: #FFD6D6; }
-
-/* --- MODAL DE CONFIRMATION DE SUPPRESSION --- */
-.confirm-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px); /* Effet de flou iOS */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 4000;
-  padding: 40px;
 }
 
 .confirm-modal-sheet {
   background: white;
-  width: 100%;
+  width: 85%;
   max-width: 300px;
   border-radius: 20px;
   padding: 24px;
   text-align: center;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-  animation: modalScale 0.2s ease-out;
-}
-
-@keyframes modalScale {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.confirm-icon-wrapper {
-  margin-bottom: 16px;
-  display: flex;
-  justify-content: center;
-}
-
-.confirm-modal-sheet h3 {
-  margin: 0 0 8px 0;
-  font-size: 19px;
-  font-weight: 700;
-  color: #1C1C1E;
-}
-
-.confirm-modal-sheet p {
-  margin: 0 0 24px 0;
-  font-size: 15px;
-  color: #8E8E93;
 }
 
 .confirm-actions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 .confirm-btn-delete {
   background: #FF3B30;
   color: white;
   border: none;
-  padding: 14px;
-  border-radius: 12px;
-  font-size: 16px;
+  padding: 12px;
+  border-radius: 10px;
   font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.2s;
 }
-
-.confirm-btn-delete:active { opacity: 0.8; }
 
 .confirm-btn-cancel {
   background: #F2F2F7;
-  color: #1C1C1E;
   border: none;
-  padding: 14px;
-  border-radius: 12px;
-  font-size: 16px;
+  padding: 12px;
+  border-radius: 10px;
   font-weight: 600;
-  cursor: pointer;
 }
 
-.confirm-btn-cancel:active { background: #E5E5EA; }
-
-/* Garde tes autres styles (Todo-card, Segmented, Quick-add, etc.) */
+.todo-quick-add {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 20px calc(env(safe-area-inset-bottom, 15px) + 10px);
+  background: white; /* Fond blanc uni comme sur ListsView */
+  border-top: 1px solid #E5E5EA; /* Bordure fine pour la séparation */
+  z-index: 10;
+}
