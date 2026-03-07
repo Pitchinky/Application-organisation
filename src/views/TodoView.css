@@ -257,7 +257,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 10px 20px calc(env(safe-area-inset-bottom, 15px));
+  padding: 10px 20px 5px;
   background: white; /* Fond blanc uni comme sur ListsView */
   border-top: 1px solid #E5E5EA; /* Bordure fine pour la séparation */
   z-index: 10;
