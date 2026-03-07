@@ -5,7 +5,7 @@ import {
   Heart, Star, Book, Coffee, Dumbbell, Briefcase, Music, Plane, Car, 
   Home, Pizza, Gift, Camera, Code, Smartphone, Wallet, Tent, Map, 
   GraduationCap, Palette, Utensils, Apple, Beef, Fish, Bath, Package, 
-  Snowflake, CupSoda, Cookie
+  Snowflake, CupSoda, Cookie, Calendar
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import { collection, doc, setDoc, onSnapshot, query, deleteDoc } from "firebase/firestore";
@@ -110,6 +110,13 @@ export default function ListsView() {
     await setDoc(doc(db, "lists", activeListId), { ...activeList, items: updatedItems });
   };
 
+  const updateItemDate = async (itemId, date) => {
+    const updatedItems = activeList.items.map(item => 
+      item.id === itemId ? { ...item, dueDate: date } : item
+    );
+    await setDoc(doc(db, "lists", activeListId), { ...activeList, items: updatedItems });
+  };
+
   if (!activeListId) {
     return (
       <div className="lists-container">
@@ -186,11 +193,32 @@ export default function ListsView() {
     <div key={item.id} className={`list-item ${item.completed ? 'completed' : ''}`}>
       <div className="item-main" onClick={() => toggleItem(item.id)}>
         {item.completed ? <CheckCircle2 color={activeList.color} /> : <Circle color="#C7C7CC" />}
-        <span>{item.text}</span>
+        <div className="item-text-wrapper">
+          <span>{item.text}</span>
+          {item.dueDate && (
+            <span className="due-date-badge">
+              <Calendar size={10} /> {new Date(item.dueDate).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})}
+            </span>
+          )}
+        </div>
       </div>
-      <button className="delete-btn" onClick={() => deleteItem(item.id)}>
-        <Trash2 size={18} color="#FF3B30" />
-      </button>
+      
+      <div className="item-actions">
+        {/* BOUTON CALENDRIER AVEC INPUT INVISIBLE */}
+        <div className="date-picker-wrapper">
+          <Calendar size={18} color={item.dueDate ? activeList.color : "#C7C7CC"} />
+          <input 
+            type="date" 
+            className="hidden-date-input"
+            value={item.dueDate || ""}
+            onChange={(e) => updateItemDate(item.id, e.target.value)}
+          />
+        </div>
+
+        <button className="delete-btn" onClick={() => deleteItem(item.id)}>
+          <Trash2 size={18} color="#FF3B30" />
+        </button>
+      </div>
     </div>
   );
 
