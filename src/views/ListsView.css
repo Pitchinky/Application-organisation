@@ -189,13 +189,16 @@
   justify-content: center; 
   background-color: transparent; 
   border: none; 
-  width: 44px; /* Augmenté à 44px pour iPhone */
-  height: 44px; /* Augmenté à 44px pour iPhone */
+  width: 44px; 
+  height: 44px; 
   border-radius: 50%; 
   cursor: pointer; 
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
   outline: none;
-  -webkit-tap-highlight-color: transparent; /* Supprime le rectangle gris au clic sur iPhone */
+  -webkit-tap-highlight-color: transparent;
+  
+  /* SOLUTION ICI */
+  position: relative; 
+  z-index: 10; /* On le place tout en haut de la pile */
 }
 
 .delete-btn:active { 
@@ -222,15 +225,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 1; /* Niveau inférieur */
 }
 
 .hidden-date-input {
   position: absolute;
   inset: 0;
-  opacity: 0; /* On ne voit pas l'input moche */
+  opacity: 0;
   width: 100%;
   height: 100%;
   cursor: pointer;
+  z-index: 2; /* L'input est dans son wrapper */
 }
 
 .due-date-badge {
@@ -246,7 +251,7 @@
   display: flex; 
   align-items: center; 
   gap: 12px; 
-  flex-shrink: 0; /* Empêche item-main de prendre toute la place et d'écraser les boutons */
+  flex-shrink: 0; 
   padding-left: 10px;
-  z-index: 5;
+  position: relative; /* Nécessaire pour le z-index des enfants */
 }
