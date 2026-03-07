@@ -183,8 +183,25 @@
 .item-main { display: flex; align-items: center; gap: 12px; flex: 1; cursor: pointer; }
 .list-item.completed span { text-decoration: line-through; color: #8E8E93; }
 
-.delete-btn { display: flex; align-items: center; justify-content: center; background-color: transparent; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); outline: none; }
-.delete-btn:active { background-color: rgba(255, 59, 48, 0.2); transform: scale(0.9); }
+.delete-btn { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  background-color: transparent; 
+  border: none; 
+  width: 44px; /* Augmenté à 44px pour iPhone */
+  height: 44px; /* Augmenté à 44px pour iPhone */
+  border-radius: 50%; 
+  cursor: pointer; 
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+  outline: none;
+  -webkit-tap-highlight-color: transparent; /* Supprime le rectangle gris au clic sur iPhone */
+}
+
+.delete-btn:active { 
+  background-color: rgba(255, 59, 48, 0.15); 
+  transform: scale(0.92); 
+}
 
 .section-picker { display: flex; gap: 8px; overflow-x: auto; padding: 15px 20px 5px; scrollbar-width: none; }
 .section-picker::-webkit-scrollbar { display: none; }
@@ -225,4 +242,11 @@
   gap: 4px;
 }
 
-.item-actions { display: flex; align-items: center; gap: 10px; }
+.item-actions { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  flex-shrink: 0; /* Empêche item-main de prendre toute la place et d'écraser les boutons */
+  padding-left: 10px;
+  z-index: 5;
+}

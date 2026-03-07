@@ -248,36 +248,43 @@ export default function ListsView() {
 
   // --- RENDU D'UNE LIGNE D'ITEM ---
   const ItemRow = ({ item }) => (
-    <div key={item.id} className={`list-item ${item.completed ? 'completed' : ''}`}>
-      <div className="item-main" onClick={() => toggleItem(item.id)}>
-        {item.completed ? <CheckCircle2 color={activeList.color} /> : <Circle color="#C7C7CC" />}
-        <div className="item-text-wrapper">
-          <span>{item.text}</span>
-          {item.dueDate && (
-            <span className="due-date-badge">
-              <Calendar size={10} /> {new Date(item.dueDate).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})}
-            </span>
-          )}
-        </div>
-      </div>
-      
-      <div className="item-actions">
-        <div className="date-picker-wrapper">
-          <Calendar size={18} color={item.dueDate ? activeList.color : "#C7C7CC"} />
-          <input 
-            type="date" 
-            className="hidden-date-input"
-            value={item.dueDate || ""}
-            onChange={(e) => updateItemDate(item.id, e.target.value)}
-          />
-        </div>
-
-        <button className="delete-btn" onClick={() => deleteItem(item.id)}>
-          <Trash2 size={18} color="#FF3B30" />
-        </button>
+  <div key={item.id} className={`list-item ${item.completed ? 'completed' : ''}`}>
+    <div className="item-main" onClick={() => toggleItem(item.id)}>
+      {item.completed ? <CheckCircle2 color={activeList.color} /> : <Circle color="#C7C7CC" />}
+      <div className="item-text-wrapper">
+        <span>{item.text}</span>
+        {item.dueDate && (
+          <span className="due-date-badge">
+            <Calendar size={10} /> {new Date(item.dueDate).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})}
+          </span>
+        )}
       </div>
     </div>
-  );
+    
+    <div className="item-actions">
+      <div className="date-picker-wrapper">
+        <Calendar size={18} color={item.dueDate ? activeList.color : "#C7C7CC"} />
+        <input 
+          type="date" 
+          className="hidden-date-input"
+          value={item.dueDate || ""}
+          onChange={(e) => updateItemDate(item.id, e.target.value)}
+        />
+      </div>
+
+      {/* AJOUT DE e.stopPropagation() ICI */}
+      <button 
+        className="delete-btn" 
+        onClick={(e) => {
+          e.stopPropagation();
+          deleteItem(item.id);
+        }}
+      >
+        <Trash2 size={18} color="#FF3B30" style={{ pointerEvents: 'none' }} />
+      </button>
+    </div>
+  </div>
+);
 
   return (
     <div className="active-list-view">
