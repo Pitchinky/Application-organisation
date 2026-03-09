@@ -53,7 +53,7 @@ export default function TimerView() {
       : "La pause est finie. Pret a repartir ?";
     
     try {
-      await fetch('https://ntfy.sh/pomodoro_thales_99', {
+      await fetch('https://ntfy.sh/mon_application_organisation', {
         method: 'POST',
         body: message, // Le corps (body) supporte les emojis, mais pas les headers
         headers: { 
