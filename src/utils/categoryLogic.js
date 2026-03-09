@@ -66,6 +66,11 @@ const CATEGORIES = {
     color: '#A2845E', // Marron kraft / Sable
     keywords: ['ecriture'] 
   },
+  LECTURE: { 
+    icon: 'solar:book-bold', 
+    color: '#5856D6', // Indigo iOS
+    keywords: ['lecture', 'lire', 'livre', 'roman', 'bd', 'manga', 'kindle'] 
+  },
   CINEMA: { 
     icon: 'solar:videocamera-record-bold', 
     color: '#FF3B30', // Rouge vif
