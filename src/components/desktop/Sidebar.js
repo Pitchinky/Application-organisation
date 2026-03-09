@@ -22,6 +22,10 @@ export default function Sidebar({ activeTab, setActiveTab }) {
            <CalIcon size={20} /> Listes
         </button>
 
+        <button className={`sidebar-btn ${activeTab==='habit'?'active':''}`} onClick={()=>setActiveTab('habit')}>
+           <CalIcon size={20} /> Habit
+        </button>
+
 
         <button className={`sidebar-btn ${activeTab==='settings'?'active':''}`} onClick={()=>setActiveTab('settings')}>
            <Settings size={20} /> Réglages
