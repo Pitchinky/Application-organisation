@@ -17,7 +17,7 @@ export default function BottomNav({ activeTab, setActiveTab, onAddClick }) {
          <span>Timeline</span>
        </button>
 
-       <button className={`nav-item ${activeTab === 'pomodoro' ? 'active' : ''}`} onClick={() => setActiveTab('pomodoro')}>
+       <button className={`nav-item ${activeTab === 'timer' ? 'active' : ''}`} onClick={() => setActiveTab('timer')}>
          <Timer size={24} />
          <span>Pomodoro</span>
        </button>

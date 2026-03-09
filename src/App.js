@@ -13,6 +13,7 @@ import ListsView from './views/ListsView';
 import ToDoView from './views/ToDoView';
 import SettingsView from './views/SettingsView';
 import HabitView from './views/HabitView';
+import TimerView from './views/TimerView';
 
 // COMPOSANTS PARTAGÉS
 import AddTaskModal from './components/shared/AddTaskModal';
@@ -371,6 +372,9 @@ function App() {
 
         ) : activeTab === 'habit' ? (
           <HabitView />
+
+        ) : activeTab === 'timer' ? (
+          <TimerView />
 
         ) : activeTab === 'settings' ? (
           <SettingsView calendars={calendars} selectedCalendarIds={selectedCalendarIds} toggleCalendar={(id)=>setSelectedCalendarIds(p=>p.includes(id)?p.filter(i=>i!==id):[...p,id])} handleLogout={()=>{auth.signOut(); localStorage.clear(); window.location.reload();}} />
