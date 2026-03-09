@@ -51,7 +51,7 @@ export default function TimerView() {
       ? `Bravo ! Tu as fini ${workDuration}min de focus.`
       : "La pause est finie. Prêt à repartir ?";
     
-    fetch('https://ntfy.sh/pomodoro_thales_99', {
+    fetch('https://ntfy.sh/mon_application_organisation', {
       method: 'POST',
       body: message,
       headers: { 'Title': title, 'Tags': isWorkMode ? 'brain' : 'coffee', 'Priority': 'high' }
