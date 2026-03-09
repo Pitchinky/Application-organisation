@@ -10,7 +10,7 @@ import MobileLayout from './layouts/MobileLayout';
 import DesktopLayout from './layouts/DesktopLayout';
 import TimelineView from './views/TimelineView';
 import ListsView from './views/ListsView';
-import InboxView from './views/InboxView';
+import ToDoView from './views/ToDoView';
 import SettingsView from './views/SettingsView';
 
 // COMPOSANTS PARTAGÉS
@@ -363,8 +363,8 @@ function App() {
           calendars={calendars} showCalMenu={showCalMenu} setShowCalMenu={setShowCalMenu} setShowAddModal={setShowAddModal} 
           onDeleteEvent={handleDeleteRequest} onEditEvent={handleEditEvent} allDayEvents={events.filter(e => !e.start?.dateTime)} 
         />
-        ) : activeTab === 'inbox' ? (
-          <InboxView onPlanTask={(title) => { setNewTaskTitle(title); setShowAddModal(true); }} />
+        ) : activeTab === 'to_do' ? (
+          <ToDoView />
         ) : activeTab === 'lists' ? (
           <ListsView />
         ) : activeTab === 'settings' ? (

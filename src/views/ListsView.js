@@ -5,10 +5,10 @@ import {
   Heart, Star, Book, Coffee, Dumbbell, Briefcase, Music, Plane, Car, 
   Home, Pizza, Gift, Camera, Code, Smartphone, Wallet, Tent, Map, 
   GraduationCap, Palette, Utensils, Apple, Beef, Fish, Bath, Package, 
-  Snowflake, CupSoda, Cookie
+  Snowflake, CupSoda, Cookie, Calendar
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
-import { collection, doc, setDoc, onSnapshot, query, deleteDoc } from "firebase/firestore";
+import { collection, doc, setDoc, onSnapshot, query, deleteDoc, updateDoc } from "firebase/firestore";
 import './ListsView.css';
 
 const ICONS_MAP = {
@@ -34,6 +34,7 @@ const PRESET_COLORS = ["#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#007AFF", "#
 
 export default function ListsView() {
   const [lists, setLists] = useState([]);
+  const [inboxItems, setInboxItems] = useState([]); // État pour l'Inbox
   const [activeListId, setActiveListId] = useState(null);
   const [newItemText, setNewItemText] = useState("");
   const [selectedSection, setSelectedSection] = useState('autre');
@@ -44,11 +45,19 @@ export default function ListsView() {
   const [newListIcon, setNewListIcon] = useState("list");
 
   useEffect(() => {
+    // Écoute des listes normales
     const q = query(collection(db, "lists"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubLists = onSnapshot(q, (snapshot) => {
       setLists(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-    return () => unsubscribe();
+
+    // Écoute de l'Inbox (todos)
+    const qInbox = query(collection(db, "todos"));
+    const unsubInbox = onSnapshot(qInbox, (snapshot) => {
+      setInboxItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => { unsubLists(); unsubInbox(); };
   }, []);
 
   const IconRenderer = ({ iconName, color, size = 24 }) => {
@@ -76,7 +85,10 @@ export default function ListsView() {
     }
   };
 
-  const activeList = lists.find(l => l.id === activeListId);
+  // Détermination de la liste active
+  const activeList = activeListId === 'inbox' 
+    ? { id: 'inbox', name: 'Inbox', color: '#007AFF', icon: 'inbox', items: inboxItems }
+    : lists.find(l => l.id === activeListId);
 
   const getProgress = (items = []) => {
     if (items.length === 0) return 0;
@@ -84,30 +96,62 @@ export default function ListsView() {
     return (completed / items.length) * 100;
   };
 
+  // Gestion intelligente de l'ajout (Inbox vs Liste)
   const addItem = async (e) => {
     e.preventDefault();
     if (!newItemText.trim() || !activeList) return;
-    const newItem = { 
-        id: Date.now(), 
-        text: newItemText, 
+
+    if (activeListId === 'inbox') {
+      const id = Date.now().toString();
+      await setDoc(doc(db, "todos", id), {
+        text: newItemText,
         completed: false,
-        section: activeList.icon === 'cart' ? selectedSection : null 
-    };
-    const updatedItems = [...(activeList.items || []), newItem];
-    await setDoc(doc(db, "lists", activeListId), { ...activeList, items: updatedItems });
+        createdAt: new Date().toISOString(),
+        dueDate: null
+      });
+    } else {
+      const newItem = { 
+          id: Date.now(), 
+          text: newItemText, 
+          completed: false,
+          section: activeList.icon === 'cart' ? selectedSection : null 
+      };
+      const updatedItems = [...(activeList.items || []), newItem];
+      await updateDoc(doc(db, "lists", activeListId), { items: updatedItems });
+    }
     setNewItemText("");
   };
 
   const toggleItem = async (itemId) => {
-    const updatedItems = activeList.items.map(item => 
-      item.id === itemId ? { ...item, completed: !item.completed } : item
-    );
-    await setDoc(doc(db, "lists", activeListId), { ...activeList, items: updatedItems });
+    if (activeListId === 'inbox') {
+      const item = inboxItems.find(i => i.id === itemId);
+      await updateDoc(doc(db, "todos", itemId), { completed: !item.completed });
+    } else {
+      const updatedItems = activeList.items.map(item => 
+        item.id === itemId ? { ...item, completed: !item.completed } : item
+      );
+      await updateDoc(doc(db, "lists", activeListId), { items: updatedItems });
+    }
   };
 
   const deleteItem = async (itemId) => {
-    const updatedItems = activeList.items.filter(item => item.id !== itemId);
-    await setDoc(doc(db, "lists", activeListId), { ...activeList, items: updatedItems });
+    if (activeListId === 'inbox') {
+      await deleteDoc(doc(db, "todos", itemId));
+    } else {
+      const updatedItems = activeList.items.filter(item => item.id !== itemId);
+      await updateDoc(doc(db, "lists", activeListId), { items: updatedItems });
+    }
+  };
+
+  const updateItemDate = async (itemId, date) => {
+    if (activeListId === 'inbox') {
+      await updateDoc(doc(db, "todos", itemId), { dueDate: date });
+    } else {
+      const updatedItems = activeList.items.map(item => 
+        item.id === itemId ? { ...item, dueDate: date } : item
+      );
+      await updateDoc(doc(db, "lists", activeListId), { items: updatedItems });
+    }
   };
 
   if (!activeListId) {
@@ -115,6 +159,27 @@ export default function ListsView() {
       <div className="lists-container">
         <h1 className="main-title">Mes Listes</h1>
         <div className="lists-grid">
+          
+          {/* CARTE INBOX */}
+          <div className="list-card" onClick={() => setActiveListId('inbox')}>
+            <div className="list-card-top">
+              <div className="list-card-icon" style={{ backgroundColor: '#007AFF20' }}>
+                <Inbox color="#007AFF" />
+              </div>
+            </div>
+            <div className="list-card-info">
+              <span className="list-name">Inbox</span>
+              <span className="list-count">{inboxItems.length}</span>
+            </div>
+            <div className="progress-wrapper">
+              <div className="progress-fill" style={{ 
+                width: `${getProgress(inboxItems)}%`, 
+                backgroundColor: '#007AFF' 
+              }} />
+            </div>
+          </div>
+
+          {/* TES LISTES PERSO */}
           {lists.map(list => {
             const progress = getProgress(list.items);
             return (
@@ -183,16 +248,43 @@ export default function ListsView() {
 
   // --- RENDU D'UNE LIGNE D'ITEM ---
   const ItemRow = ({ item }) => (
-    <div key={item.id} className={`list-item ${item.completed ? 'completed' : ''}`}>
-      <div className="item-main" onClick={() => toggleItem(item.id)}>
-        {item.completed ? <CheckCircle2 color={activeList.color} /> : <Circle color="#C7C7CC" />}
+  <div key={item.id} className={`list-item ${item.completed ? 'completed' : ''}`}>
+    <div className="item-main" onClick={() => toggleItem(item.id)}>
+      {item.completed ? <CheckCircle2 color={activeList.color} /> : <Circle color="#C7C7CC" />}
+      <div className="item-text-wrapper">
         <span>{item.text}</span>
+        {item.dueDate && (
+          <span className="due-date-badge">
+            <Calendar size={10} /> {new Date(item.dueDate).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})}
+          </span>
+        )}
       </div>
-      <button className="delete-btn" onClick={() => deleteItem(item.id)}>
-        <Trash2 size={18} color="#FF3B30" />
+    </div>
+    
+    <div className="item-actions">
+      <div className="date-picker-wrapper">
+        <Calendar size={18} color={item.dueDate ? activeList.color : "#C7C7CC"} />
+        <input 
+          type="date" 
+          className="hidden-date-input"
+          value={item.dueDate || ""}
+          onChange={(e) => updateItemDate(item.id, e.target.value)}
+        />
+      </div>
+
+      {/* AJOUT DE e.stopPropagation() ICI */}
+      <button 
+        className="delete-btn" 
+        onClick={(e) => {
+          e.stopPropagation();
+          deleteItem(item.id);
+        }}
+      >
+        <Trash2 size={18} color="#FF3B30" style={{ pointerEvents: 'none' }} />
       </button>
     </div>
-  );
+  </div>
+);
 
   return (
     <div className="active-list-view">
@@ -248,7 +340,6 @@ export default function ListsView() {
                 }}
               >
                 <sec.icon size={14} />
-                <span>{sec.label}</span>
               </button>
             ))}
           </div>
