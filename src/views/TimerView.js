@@ -46,16 +46,27 @@ export default function TimerView() {
   };
 
   const sendNotifications = async () => {
-    const title = isWorkMode ? "Session Terminée ! 🧠" : "Pause Terminée ! ☕️";
+    // Supprime les emojis des chaînes de texte ici pour le titre
+    const title = isWorkMode ? "Session Terminee" : "Pause Terminee";
     const message = isWorkMode 
       ? `Bravo ! Tu as fini ${workDuration}min de focus.`
-      : "La pause est finie. Prêt à repartir ?";
+      : "La pause est finie. Pret a repartir ?";
     
-    fetch('https://ntfy.sh/mon_application_organisation', {
-      method: 'POST',
-      body: message,
-      headers: { 'Title': title, 'Tags': isWorkMode ? 'brain' : 'coffee', 'Priority': 'high' }
-    });
+    try {
+      await fetch('https://ntfy.sh/pomodoro_thales_99', {
+        method: 'POST',
+        body: message, // Le corps (body) supporte les emojis, mais pas les headers
+        headers: { 
+          // ON UTILISE DU TEXTE SIMPLE POUR LE TITRE
+          'Title': title, 
+          // NTFY TRANSFORMERA "brain" EN 🧠 ET "coffee" EN ☕️ AUTOMATIQUEMENT
+          'Tags': isWorkMode ? 'brain' : 'coffee', 
+          'Priority': 'high' 
+        }
+      });
+    } catch (err) {
+      console.error("Erreur notification:", err);
+    }
   };
 
   const toggleTimer = () => setIsActive(!isActive);
