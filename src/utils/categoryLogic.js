@@ -106,6 +106,17 @@ const CATEGORIES = {
     color: '#A7B5D9', // Bleu des neiges / Gris bleuté
     keywords: ['ski', 'neige'] 
   },
+  RANDONNEE: { 
+    icon: 'solar:hiking-bold', 
+    color: '#30D158', // Vert Nature (iOS)
+    keywords: ['ballade', 'balade', 'randonnée', 'rando', 'marche', 'promenade', 'nature'] 
+  },
+  // --- NOUVELLE CATÉGORIE : SHOPPING ---
+  SHOPPING: { 
+    icon: 'solar:bag-bold', 
+    color: '#FF5E50', // Corail / Rouge clair
+    keywords: ['shopping', 'courses', 'magasin', 'achat', 'supermarché', 'fnac', 'zara'] 
+  },
   DEFAUT: { 
     icon: 'solar:notes-bold', 
     color: '#8E8E93', // Gris standard
