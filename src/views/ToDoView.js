@@ -1,68 +1,82 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Star, Inbox, CheckCircle2, Circle, Hash, 
-  AlertCircle, Calendar as CalendarIcon, ChevronRight, Plus, FolderInput, X, Trash2, AlertTriangle
+  AlertCircle, Calendar as CalendarIcon, ChevronRight, Plus, FolderInput, X, Trash2, AlertTriangle,
+  Calendar, CalendarClock, CalendarX
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import { collection, onSnapshot, query, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import './TodoView.css'; 
 
 export default function TodoView() {
-  const [activeTab, setActiveTab] = useState('today');
-  const [allLists, setAllLists] = useState([]);
-  const [inboxTasks, setInboxTasks] = useState([]);
-  const [newTaskText, setNewTaskText] = useState("");
-  const [movingTask, setMovingTask] = useState(null); 
-  const [taskToDelete, setTaskToDelete] = useState(null); // Tâche en attente de suppression
 
+  // --- ÉTATS (STATES) : La mémoire locale de ton application ---
+  const [activeTab, setActiveTab] = useState('today'); // 'today' (Étoile) ou 'inbox' (Boîte de réception)
+  const [allLists, setAllLists] = useState([]);      // Stocke toutes tes catégories (Sport, Travail...)
+  const [inboxTasks, setInboxTasks] = useState([]);   // Stocke les tâches "volantes" (non triées)
+  const [newTaskText, setNewTaskText] = useState(""); // Ce que tu tapes dans la barre d'ajout
+  const [movingTask, setMovingTask] = useState(null); // La tâche que tu es en train de déplacer
+  const [taskToDelete, setTaskToDelete] = useState(null); // La tâche en attente de suppression
+  const [schedulingTask, setSchedulingTask] = useState(null); // Tâche en cours de planification par date
+
+  // On récupère la date du jour au format YYYY-MM-DD 
   const todayStr = new Date().toISOString().split('T')[0];
 
+  // --- SYNCHRONISATION FIREBASE (TEMPS RÉEL) ---
   useEffect(() => {
+    // Écoute les changements dans la collection "lists"
     const unsubLists = onSnapshot(collection(db, "lists"), (snap) => {
       setAllLists(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
+    // Écoute les changements dans la collection "todos" (ton Inbox)
     const unsubInbox = onSnapshot(collection(db, "todos"), (snap) => {
       setInboxTasks(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => { unsubLists(); unsubInbox(); };
   }, []);
 
-  // --- ACTIONS ---
+  // --- ACTIONS : Fonctions de gestion des données ---
+
+  // AJOUTER UNE TÂCHE
   const handleAddTask = async (e) => {
     e.preventDefault();
-    if (!newTaskText.trim()) return;
+    if (!newTaskText.trim()) return; // Empêche d'ajouter du vide
 
-    const id = Date.now().toString();
+    const id = Date.now().toString(); // Génère un ID unique basé sur le temps
     const newTask = {
       id: id,
       text: newTaskText,
       completed: false,
       createdAt: new Date().toISOString(),
+      // Si on est dans l'onglet "Aujourd'hui", on met la date du jour direct
       dueDate: activeTab === 'today' ? todayStr : null 
     };
 
     await setDoc(doc(db, "todos", id), newTask);
-    setNewTaskText("");
+    setNewTaskText(""); // Vide le champ après l'envoi
   };
 
+  // COCHER / DÉCOCHER UNE TÂCHE
   const handleToggleTask = async (task) => {
     if (task.isFromList) {
+      // Cas où la tâche est dans une liste spécifique (Sport, etc.)
       const list = allLists.find(l => l.id === task.listId);
       const updatedItems = list.items.map(item => 
         item.id === task.id ? { ...item, completed: !item.completed } : item
       );
       await updateDoc(doc(db, "lists", task.listId), { items: updatedItems });
     } else {
+      // Cas où la tâche est dans l'Inbox
       await updateDoc(doc(db, "todos", task.id), { completed: !task.completed });
     }
   };
 
-  // Lance la demande de confirmation
+  // SUPPRESSION (Étape 1 : Demander confirmation)
   const requestDelete = (task) => {
     setTaskToDelete(task);
   };
 
-  // Exécute la suppression réelle
+  // SUPPRESSION (Étape 2 : Exécution après clic sur "Supprimer")
   const confirmDelete = async () => {
     if (!taskToDelete) return;
 
@@ -73,9 +87,10 @@ export default function TodoView() {
     } else {
       await deleteDoc(doc(db, "todos", taskToDelete.id));
     }
-    setTaskToDelete(null);
+    setTaskToDelete(null); // Ferme la modal
   };
 
+  // DÉPLACER UNE TÂCHE VERS UNE LISTE
   const moveTaskToList = async (listId) => {
     if (!movingTask) return;
     const targetList = allLists.find(l => l.id === listId);
@@ -86,72 +101,201 @@ export default function TodoView() {
       createdAt: movingTask.createdAt,
       dueDate: null
     };
+    // 1. Ajoute dans la nouvelle liste
     const updatedItems = [...(targetList.items || []), newItem];
     await updateDoc(doc(db, "lists", listId), { items: updatedItems });
+    // 2. Supprime de l'Inbox
     await deleteDoc(doc(db, "todos", movingTask.id));
-    setMovingTask(null);
+    setMovingTask(null); // Ferme la modal
   };
 
+  // PLANIFIER POUR AUJOURD'HUI 
+  const handlePlanForToday = async (task) => {
+    if (task.isFromList) {
+      const list = allLists.find(l => l.id === task.listId);
+      const updatedItems = list.items.map(item => 
+        item.id === task.id ? { ...item, dueDate: todayStr } : item
+      );
+      await updateDoc(doc(db, "lists", task.listId), { items: updatedItems });
+    } else {
+      await updateDoc(doc(db, "todos", task.id), { dueDate: todayStr });
+    }
+  };
+
+  // DÉ-PLANIFIER (Enlever la date)
+  const handleUnplan = async (task) => {
+    if (task.isFromList) {
+      const list = allLists.find(l => l.id === task.listId);
+      const updatedItems = list.items.map(item => 
+        item.id === task.id ? { ...item, dueDate: null } : item
+      );
+      await updateDoc(doc(db, "lists", task.listId), { items: updatedItems });
+    } else {
+      await updateDoc(doc(db, "todos", task.id), { dueDate: null });
+    }
+  };
+
+  // PLANIFIER À UNE DATE PRÉCISE
+  const handleSetCustomDate = async (task, date) => {
+    if (task.isFromList) {
+      const list = allLists.find(l => l.id === task.listId);
+      const updatedItems = list.items.map(item => 
+        item.id === task.id ? { ...item, dueDate: date } : item
+      );
+      await updateDoc(doc(db, "lists", task.listId), { items: updatedItems });
+    } else {
+      await updateDoc(doc(db, "todos", task.id), { dueDate: date });
+    }
+    setSchedulingTask(null);
+  };
+
+  // LOGIQUE DE TRI : Récupère toutes les tâches datées de toutes les listes
   const getAggregatedTasks = () => {
     let overdue = [];
     let today = [];
+
     allLists.forEach(list => {
+      // On ignore la liste "Courses" (cart) pour cet affichage
       if (list.icon !== 'cart') {
         (list.items || []).forEach(item => {
           if (item.dueDate) {
             const task = { ...item, listId: list.id, listName: list.name, listColor: list.color, isFromList: true };
+            // Si la date est passée et non finie -> Retard
             if (item.dueDate < todayStr && !item.completed) overdue.push(task);
-            else if (item.dueDate === todayStr || (item.dueDate < todayStr && item.completed)) today.push(task);
+            // Si c'est aujourd'hui -> Aujourd'hui
+            else if (item.dueDate === todayStr) today.push(task);
           }
         });
       }
     });
+
+    // On ajoute les tâches de l'Inbox qui auraient une date aujourd'hui
     inboxTasks.forEach(task => {
         const taskWithMeta = { ...task, listName: 'Inbox', listColor: '#007AFF', isFromList: false };
         if (task.dueDate === todayStr) today.push(taskWithMeta);
+        else if ((task.dueDate < todayStr && !task.completed)) overdue.push(taskWithMeta);
     });
+
     return { overdue, today };
   };
 
+  // LOGIQUE de TRI : Récupère les tâches sans date, groupées par liste
+  const getUnplannedTasksByList = () => {
+    return allLists
+      .filter(list => list.icon !== 'cart')
+      .map(list => ({
+        ...list,
+        // On ne garde que les items qui n'ont PAS de dueDate
+        unplannedItems: (list.items || []).filter(item => !item.dueDate)
+      }))
+      // On ne garde que les listes qui ont au moins une tâche à planifier
+      .filter(list => list.unplannedItems.length > 0);
+  };
+
+  const unplannedLists = getUnplannedTasksByList();
   const { overdue, today } = getAggregatedTasks();
-  const inboxOnly = inboxTasks.filter(t => !t.dueDate);
+  const inboxOnly = inboxTasks.filter(t => !t.dueDate); // Tâches sans date pour l'onglet Inbox
 
   return (
     <div className="todo-page">
+
+      {/* HEADER : Titre et Sélecteur (Tabs) */}
       <div className="todo-header-premium">
         <h1 className="todo-app-title">Focus</h1>
         <div className="segmented-picker">
+
           <button className={activeTab === 'today' ? 'active' : ''} onClick={() => setActiveTab('today')}>
             <Star size={16} fill={activeTab === 'today' ? "currentColor" : "none"} />
             <span>Aujourd'hui</span>
           </button>
+
+          <button className={activeTab === 'planifier' ? 'active' : ''} onClick={() => setActiveTab('planifier')}>
+            <Calendar size={16} fill={activeTab === 'planifier' ? "currentColor" : "none"} />
+            <span>A Planifier</span>
+          </button>
+
           <button className={activeTab === 'inbox' ? 'active' : ''} onClick={() => setActiveTab('inbox')}>
             <Inbox size={16} fill={activeTab === 'inbox' ? "currentColor" : "none"} />
             <span>Inbox</span>
           </button>
+
         </div>
       </div>
 
+      {/* CORPS : Zone de défilement des tâches */}
       <div className="todo-scroll-area">
-        {activeTab === 'today' ? (
+
+        {/* --- ONGLET TODAY --- */}
+        {activeTab === 'today' && (
           <div className="todo-sections-gap">
+            
+            {/* Section En Retard */}
             {overdue.length > 0 && (
               <section>
                 <div className="section-label overdue"><AlertCircle size={14} /> EN RETARD</div>
-                {overdue.map(t => <TodoCard key={t.id} task={t} onToggle={() => handleToggleTask(t)} onDelete={() => requestDelete(t)} />)}
+                {overdue.map(t => <TodoCard 
+                key={t.id} 
+                task={t} onToggle={() => handleToggleTask(t)} 
+                onDelete={() => requestDelete(t)}
+                onUnplan={() => handleUnplan(t)} />
+                )}
               </section>
             )}
+
+            {/* Section Aujourd'hui */}
             <section>
               <div className="section-label"><CalendarIcon size={14} /> AUJOURD'HUI</div>
               {today.length > 0 ? (
-                today.map(t => <TodoCard key={t.id} task={t} onToggle={() => handleToggleTask(t)} onDelete={() => requestDelete(t)} />)
+                today.map(t => <TodoCard 
+                  key={t.id} 
+                  task={t} 
+                  onToggle={() => handleToggleTask(t)} 
+                  onDelete={() => requestDelete(t)} 
+                  onUnplan={() => handleUnplan(t)}
+                  />
+                  
+                )
               ) : (
                 <div className="todo-empty-card">Rien pour aujourd'hui</div>
               )}
             </section>
+
           </div>
-        ) : (
+
+        )}
+
+        {/* --- ONGLET À PLANIFIER --- */}
+        {activeTab === 'planifier' && (
+          <div className="todo-sections-gap">
+            {unplannedLists.length > 0 ? (
+              unplannedLists.map(list => (
+                <section key={list.id}>
+                  {/* Titre de la liste avec sa couleur */}
+                  <div className="section-label" style={{ color: list.color }}>
+                    <Hash size={14} /> {list.name.toUpperCase()}
+                  </div>
+                  {list.unplannedItems.map(t => (
+                    <TodoCard 
+                      key={t.id} 
+                      task={{ ...t, listId: list.id, listName: list.name, listColor: list.color, isFromList: true }} 
+                      onToggle={() => handleToggleTask({ ...t, listId: list.id, isFromList: true })} 
+                      onDelete={() => requestDelete({ ...t, listId: list.id, isFromList: true })}
+                      onPlan={() => handlePlanForToday({ ...t, listId: list.id, isFromList: true })} 
+                      onCustomDate={() => setSchedulingTask({ ...t, listId: list.id, isFromList: true })}
+                    />
+                  ))}
+                </section>
+              ))
+            ) : (
+              <div className="todo-empty-card">Toutes les tâches sont planifiées !</div>
+            )}
+          </div>
+        )}
+
+        {/* --- ONGLET INBOX --- */}
+        {activeTab === 'inbox' && (
           <section>
+
             <div className="section-label"><Inbox size={14} /> À CLASSER</div>
             {inboxOnly.map(t => (
               <TodoCard 
@@ -160,13 +304,17 @@ export default function TodoView() {
                 onToggle={() => handleToggleTask(t)}
                 onDelete={() => requestDelete({...t, isFromList: false})}
                 onMove={() => setMovingTask(t)}
+                onPlan={() => handlePlanForToday(t)}
+                onCustomDate={() => setSchedulingTask(t)}
               />
             ))}
           </section>
         )}
+        
+
       </div>
 
-      {/* MODAL DE SUPPRESSION (ALERTE) */}
+      {/* MODAL DE SUPPRESSION (Style Alerte iOS) */}
       {taskToDelete && (
         <div className="confirm-modal-overlay" onClick={() => setTaskToDelete(null)}>
           <div className="confirm-modal-sheet" onClick={e => e.stopPropagation()}>
@@ -183,7 +331,7 @@ export default function TodoView() {
         </div>
       )}
 
-      {/* MODAL DE DÉPLACEMENT */}
+      {/* MODAL DE DÉPLACEMENT (Ranger dans une liste) */}
       {movingTask && (
         <div className="move-modal-overlay" onClick={() => setMovingTask(null)}>
           <div className="move-modal" onClick={e => e.stopPropagation()}>
@@ -205,6 +353,28 @@ export default function TodoView() {
         </div>
       )}
 
+      {/* MODAL CALENDRIER (Choisir une date précise) */}
+      {schedulingTask && (
+        <div className="confirm-modal-overlay" onClick={() => setSchedulingTask(null)}>
+          <div className="confirm-modal-sheet" onClick={e => e.stopPropagation()}>
+            <div className="confirm-icon-wrapper">
+              <CalendarClock size={32} color="#5856D6" />
+            </div>
+            <h3>Planifier pour quand ?</h3>
+            <input 
+              type="date" 
+              className="ios-date-input"
+              onChange={(e) => handleSetCustomDate(schedulingTask, e.target.value)}
+            />
+            <div className="confirm-actions">
+              <button className="confirm-btn-cancel" onClick={() => setSchedulingTask(null)}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BARRE D'AJOUT RAPIDE (Fixe en bas) */}
+      {(activeTab === 'today' || activeTab === 'inbox') && (
       <div className="todo-quick-add">
         <form onSubmit={handleAddTask} className="quick-add-form">
           <div className="add-icon-circle"><Plus size={20} color="white" /></div>
@@ -216,11 +386,15 @@ export default function TodoView() {
           />
         </form>
       </div>
+      )}
+
     </div>
   );
 }
 
-function TodoCard({ task, onToggle, onMove, onDelete }) {
+// SOUS-COMPOSANT : La carte individuelle d'une tâche
+function TodoCard({ task, onToggle, onMove, onDelete, onPlan, onCustomDate, onUnplan }) {
+
   return (
     <div className={`todo-card ${task.completed ? 'is-done' : ''}`}>
       <div className="todo-card-left" onClick={onToggle}>
@@ -238,14 +412,39 @@ function TodoCard({ task, onToggle, onMove, onDelete }) {
       </div>
       
       <div className="todo-card-actions">
+
+        {/* BOUTON ÉTOILE : Planifier pour Aujourd'hui */}
+        {onPlan && !task.completed && (
+          <button className="action-button" onClick={(e) => {e.stopPropagation(); onPlan();}}>
+            <Star size={18} color="#D1BE21" fill="#D1BE21" />
+          </button>
+        )}
+
+        {/* BOUTON CALENDRIER : Choisir une date précise */}
+        {onCustomDate && !task.completed && (
+          <button className="action-button" onClick={(e) => {e.stopPropagation(); onCustomDate();}}>
+            <CalendarIcon size={18} color="#5856D6" />
+          </button>
+        )}
+
+        {/* BOUTON DÉ-PLANIFIER : Enlever d'aujourd'hui */}
+        {onUnplan && !task.completed && (
+          <button className="action-button" onClick={(e) => {e.stopPropagation(); onUnplan();}}>
+            <CalendarX size={18} color="#FF9500" />
+          </button>
+        )}
+
+        {/* On affiche le bouton de déplacement seulement si la tâche n'est pas finie et qu'on a la fonction onMove */}
         {onMove && !task.completed && (
           <button className="action-button move" onClick={(e) => {e.stopPropagation(); onMove();}}>
             <FolderInput size={18} color="#007AFF" />
           </button>
         )}
+
         <button className="action-button delete" onClick={(e) => {e.stopPropagation(); onDelete();}}>
           <Trash2 size={18} color="#FF3B30" />
         </button>
+
       </div>
     </div>
   );
