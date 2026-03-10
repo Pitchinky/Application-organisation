@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { 
   Star, Inbox, CheckCircle2, Circle, Hash, 
   AlertCircle, Calendar as CalendarIcon, ChevronRight, Plus, FolderInput, X, Trash2, AlertTriangle,
-  Calendar, CalendarClock, CalendarX
+  Calendar, CalendarClock, CalendarX, Link2
 } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import { db } from '../firebaseConfig';
 import { collection, onSnapshot, query, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import './TodoView.css'; 
+import { getCategoryData } from '../utils/categoryLogic';
 
-export default function TodoView() {
+
+export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEvent }) {
 
   // --- ÉTATS (STATES) : La mémoire locale de ton application ---
   const [activeTab, setActiveTab] = useState('today'); // 'today' (Étoile) ou 'inbox' (Boîte de réception)
@@ -18,6 +21,7 @@ export default function TodoView() {
   const [movingTask, setMovingTask] = useState(null); // La tâche que tu es en train de déplacer
   const [taskToDelete, setTaskToDelete] = useState(null); // La tâche en attente de suppression
   const [schedulingTask, setSchedulingTask] = useState(null); // Tâche en cours de planification par date
+  const [linkingTask, setLinkingTask] = useState(null); // Stocke la tâche qu'on veut lier
 
   // On récupère la date du jour au format YYYY-MM-DD 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -58,7 +62,9 @@ export default function TodoView() {
 
   // COCHER / DÉCOCHER UNE TÂCHE
   const handleToggleTask = async (task) => {
-    if (task.isFromList) {
+    if (task.isSubtask) {
+      onToggleSubtask(task.eventId, task.subtasksArray, task.id);
+    } else if (task.isFromList) {
       // Cas où la tâche est dans une liste spécifique (Sport, etc.)
       const list = allLists.find(l => l.id === task.listId);
       const updatedItems = list.items.map(item => 
@@ -150,32 +156,80 @@ export default function TodoView() {
   };
 
   // LOGIQUE DE TRI : Récupère toutes les tâches datées de toutes les listes
-  const getAggregatedTasks = () => {
+  const getAggregatedTasks = (events = []) => {
     let overdue = [];
     let today = [];
-
+  
+    // --- 1. RÉCUPÉRATION DES LISTES CLASSIQUES ---
     allLists.forEach(list => {
-      // On ignore la liste "Courses" (cart) pour cet affichage
+      // On ignore toujours la liste de courses
       if (list.icon !== 'cart') {
         (list.items || []).forEach(item => {
           if (item.dueDate) {
-            const task = { ...item, listId: list.id, listName: list.name, listColor: list.color, isFromList: true };
-            // Si la date est passée et non finie -> Retard
-            if (item.dueDate < todayStr && !item.completed) overdue.push(task);
-            // Si c'est aujourd'hui -> Aujourd'hui
-            else if (item.dueDate === todayStr) today.push(task);
+            const task = { 
+              ...item, 
+              listId: list.id, 
+              listName: list.name, 
+              listColor: list.color, 
+              isFromList: true 
+            };
+  
+            // EN RETARD : Toujours affiché si non complété
+            if (item.dueDate < todayStr && !item.completed) {
+              overdue.push(task);
+            } 
+            // AUJOURD'HUI : On l'ajoute UNIQUEMENT si elle n'est pas liée à un événement
+            // (Si elle est liée, elle sera ajoutée plus bas via la boucle 'events')
+            else if (item.dueDate === todayStr && !item.linkedEventId) {
+              today.push(task);
+            }
           }
         });
       }
     });
-
-    // On ajoute les tâches de l'Inbox qui auraient une date aujourd'hui
+  
+    // --- 2. RÉCUPÉRATION DE L'INBOX ---
     inboxTasks.forEach(task => {
-        const taskWithMeta = { ...task, listName: 'Inbox', listColor: '#007AFF', isFromList: false };
-        if (task.dueDate === todayStr) today.push(taskWithMeta);
-        else if ((task.dueDate < todayStr && !task.completed)) overdue.push(taskWithMeta);
+      const taskWithMeta = { ...task, listName: 'Inbox', listColor: '#007AFF', isFromList: false };
+      
+      if (task.dueDate < todayStr && !task.completed) {
+        overdue.push(taskWithMeta);
+      } 
+      // Même logique : on cache si c'est déjà lié à un événement
+      else if (task.dueDate === todayStr && !task.linkedEventId) {
+        today.push(taskWithMeta);
+      }
     });
-
+  
+    // --- 3. RÉCUPÉRATION DES TÂCHES LIÉES AUX ÉVÉNEMENTS ---
+    events.forEach(event => {
+      if (event.subtasks && event.subtasks.length > 0) {
+        // On récupère le style de l'événement (ex: Travail -> Bleu)
+        const catData = getCategoryData(event.summary); 
+  
+        event.subtasks.forEach(sub => {
+          // On essaie de retrouver la couleur originale de la liste (ex: Thales)
+          const sourceList = allLists.find(l => l.id === sub.sourceListId);
+  
+          today.push({
+            ...sub,
+            isSubtask: true,         
+            eventId: event.id,       
+            subtasksArray: event.subtasks,
+            
+            // IDENTITÉ : On affiche le nom de la liste source (Thales)
+            listName: sub.sourceListName || event.summary, 
+            // LIEN : On garde le nom de l'événement pour l'afficher en badge (Travail)
+            linkedEventSummary: event.summary, 
+            
+            // STYLE : On donne la priorité à la couleur de la liste source
+            listColor: sourceList ? sourceList.color : catData.color,
+            icon: catData.icon
+          });
+        });
+      }
+    });
+  
     return { overdue, today };
   };
 
@@ -193,7 +247,7 @@ export default function TodoView() {
   };
 
   const unplannedLists = getUnplannedTasksByList();
-  const { overdue, today } = getAggregatedTasks();
+  const { overdue, today } = getAggregatedTasks(events);
   const inboxOnly = inboxTasks.filter(t => !t.dueDate); // Tâches sans date pour l'onglet Inbox
 
   return (
@@ -237,7 +291,8 @@ export default function TodoView() {
                 key={t.id} 
                 task={t} onToggle={() => handleToggleTask(t)} 
                 onDelete={() => requestDelete(t)}
-                onUnplan={() => handleUnplan(t)} />
+                onUnplan={() => handleUnplan(t)}
+                onLink={setLinkingTask} />
                 )}
               </section>
             )}
@@ -252,6 +307,7 @@ export default function TodoView() {
                   onToggle={() => handleToggleTask(t)} 
                   onDelete={() => requestDelete(t)} 
                   onUnplan={() => handleUnplan(t)}
+                  onLink={setLinkingTask}
                   />
                   
                 )
@@ -306,6 +362,7 @@ export default function TodoView() {
                 onMove={() => setMovingTask(t)}
                 onPlan={() => handlePlanForToday(t)}
                 onCustomDate={() => setSchedulingTask(t)}
+                onLink={setLinkingTask}
               />
             ))}
           </section>
@@ -373,6 +430,43 @@ export default function TodoView() {
         </div>
       )}
 
+       {/* MODAL LINK (Lier à un évenement) */}
+      {linkingTask && (
+        <div className="move-modal-overlay" onClick={() => setLinkingTask(null)}>
+          <div className="move-modal" onClick={e => e.stopPropagation()}>
+            <div className="move-modal-header">
+              <h3>Lier à un événement</h3>
+              <button onClick={() => setLinkingTask(null)}><X size={20} /></button>
+            </div>
+            <div className="move-list-options">
+              {events.filter(e => !e.allDay).map(event => {
+                const cat = getCategoryData(event.summary);
+                return (
+                  <button 
+                    key={event.id} 
+                    className="move-option"
+                    onClick={() => {
+                      onLinkTaskToEvent(linkingTask, event.id);
+                      setLinkingTask(null);
+                    }}
+                  >
+                    <div className="move-option-icon" style={{backgroundColor: cat.color + '20', color: cat.color}}>
+                      <Icon icon={cat.icon} />
+                    </div>
+                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
+                      <span style={{fontWeight: '600'}}>{event.summary}</span>
+                    <span style={{fontSize: '12px', opacity: 0.6}}>
+                      {new Date(event.start.dateTime || event.start.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* BARRE D'AJOUT RAPIDE (Fixe en bas) */}
       {(activeTab === 'today' || activeTab === 'inbox') && (
       <div className="todo-quick-add">
@@ -393,7 +487,9 @@ export default function TodoView() {
 }
 
 // SOUS-COMPOSANT : La carte individuelle d'une tâche
-function TodoCard({ task, onToggle, onMove, onDelete, onPlan, onCustomDate, onUnplan }) {
+function TodoCard({ task, onToggle, onMove, onDelete, onPlan, onCustomDate, onUnplan, onLink }) {
+
+  const IconComponent = task.isSubtask ? <Icon icon={task.icon} /> : <Hash size={10} />;
 
   return (
     <div className={`todo-card ${task.completed ? 'is-done' : ''}`}>
@@ -403,11 +499,29 @@ function TodoCard({ task, onToggle, onMove, onDelete, onPlan, onCustomDate, onUn
         </div>
         <div className="todo-card-info">
           <span className="todo-card-text">{task.text}</span>
+          
           <div className="todo-card-meta">
+            {/* 1. BADGE PRINCIPAL */}
+            {/* Si c'est une subtask native (sans liste source), on affiche l'icône de catégorie */}
+            {/* Sinon (tâche de liste ou liée), on affiche le Hash # */}
             <span className="meta-tag" style={{ color: task.listColor }}>
-              <Hash size={10} /> {task.listName}
+              {task.isSubtask && !task.sourceListId ? (
+                <Icon icon={task.icon} />
+              ) : (
+                <Hash size={10} />
+              )} 
+              {task.listName}
             </span>
+            
+            {/* 2. BADGE SECONDAIRE (ÉVÉNEMENT) */}
+            {/* On ne l'affiche QUE si la tâche provient d'une liste ET qu'elle est liée à un événement */}
+            {task.sourceListId && task.linkedEventSummary && (
+              <span className="meta-tag" style={{ color: '#8E8E93', opacity: 0.7 }}>
+                <Calendar size={10} /> {task.linkedEventSummary}
+              </span>
+            )}
           </div>
+
         </div>
       </div>
       
@@ -438,6 +552,12 @@ function TodoCard({ task, onToggle, onMove, onDelete, onPlan, onCustomDate, onUn
         {onMove && !task.completed && (
           <button className="action-button move" onClick={(e) => {e.stopPropagation(); onMove();}}>
             <FolderInput size={18} color="#007AFF" />
+          </button>
+        )}
+
+        {onLink && !task.isSubtask && !task.completed && (
+          <button className="action-button" onClick={(e) => {e.stopPropagation(); onLink(task);}}>
+            <Link2 size={18} color="#5856D6" />
           </button>
         )}
 

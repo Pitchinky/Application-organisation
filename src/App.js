@@ -350,6 +350,55 @@ function App() {
     localStorage.setItem('completed_tasks', JSON.stringify(n)); 
   };
 
+  const handleLinkTaskToEvent = async (task, eventId) => {
+    const targetEvent = events.find(e => e.id === eventId);
+    if (!targetEvent) return;
+
+    const newSubtask = {
+      id: task.id,
+      text: task.text,
+      completed: task.completed || false,
+      sourceListId: task.listId || null,
+      sourceListName: task.listName || 'Inbox'
+    };
+
+    try {
+      // 1. Mise à jour des sous-tâches de l'événement
+      const eventRef = doc(db, "task_details", eventId);
+      const updatedSubtasks = [...(targetEvent.subtasks || []), newSubtask];
+      await setDoc(eventRef, { subtasks: updatedSubtasks }, { merge: true });
+
+      // 2. Mise à jour de la tâche originale (SANS allLists)
+      if (task.isFromList) {
+        const listRef = doc(db, "lists", task.listId);
+        const listSnap = await getDoc(listRef); // On récupère la liste en direct de Firestore
+        
+        if (listSnap.exists()) {
+          const listData = listSnap.data();
+          const updatedItems = listData.items.map(item => 
+            item.id === task.id ? { ...item, linkedEventId: eventId, linkedEventSummary: targetEvent.summary } : item
+          );
+          await updateDoc(listRef, { items: updatedItems });
+        }
+      } else {
+        // Pour l'Inbox
+        await updateDoc(doc(db, "todos", task.id), { 
+          linkedEventId: eventId, 
+          linkedEventSummary: targetEvent.summary 
+        });
+      }
+
+      // 3. Mise à jour locale pour l'affichage immédiat
+      setEvents(prev => prev.map(ev => 
+        ev.id === eventId ? { ...ev, subtasks: updatedSubtasks } : ev
+      ));
+
+    } catch (error) {
+      console.error("Erreur liaison :", error);
+    }
+  };
+
+
   const todaySummary = getDailySummary(new Date(), forecast);
   const Layout = isDesktop ? DesktopLayout : MobileLayout;
 
@@ -366,7 +415,11 @@ function App() {
           onDeleteEvent={handleDeleteRequest} onEditEvent={handleEditEvent} allDayEvents={events.filter(e => !e.start?.dateTime)} 
         />
         ) : activeTab === 'to_do' ? (
-          <ToDoView />
+          <ToDoView 
+          events={events} 
+          onToggleSubtask={handleToggleSubtask}
+          onLinkTaskToEvent={handleLinkTaskToEvent}
+          />
         ) : activeTab === 'lists' ? (
           <ListsView />
 
