@@ -11,7 +11,7 @@ import './TodoView.css';
 import { getCategoryData } from '../utils/categoryLogic';
 
 
-export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEvent }) {
+export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEvent, refreshEvents }) {
 
   // --- ÉTATS (STATES) : La mémoire locale de ton application ---
   const [activeTab, setActiveTab] = useState('today'); // 'today' (Étoile) ou 'inbox' (Boîte de réception)
@@ -86,14 +86,42 @@ export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEve
   const confirmDelete = async () => {
     if (!taskToDelete) return;
 
-    if (taskToDelete.isFromList) {
-      const list = allLists.find(l => l.id === taskToDelete.listId);
-      const updatedItems = list.items.filter(item => item.id !== taskToDelete.id);
-      await updateDoc(doc(db, "lists", taskToDelete.listId), { items: updatedItems });
-    } else {
-      await deleteDoc(doc(db, "todos", taskToDelete.id));
+    try {
+      // 1. On retire la tâche de l'événement lié
+      const eId = taskToDelete.linkedEventId || taskToDelete.eventId;
+      if (eId) {
+        const targetEvent = events.find(e => e.id === eId);
+        if (targetEvent && targetEvent.subtasks) {
+          const updatedSubtasks = targetEvent.subtasks.filter(s => s.id !== taskToDelete.id);
+          // Ajout de String()
+          await setDoc(doc(db, "task_details", String(eId)), { subtasks: updatedSubtasks }, { merge: true });
+        }
+      }
+
+      // 2. On retire la tâche de sa liste source
+      const targetListId = taskToDelete.listId || taskToDelete.sourceListId;
+      if (taskToDelete.isFromList && targetListId) {
+        const list = allLists.find(l => l.id === targetListId);
+        if (list) {
+          const updatedItems = list.items.filter(item => item.id !== taskToDelete.id);
+          // Ajout de String()
+          await updateDoc(doc(db, "lists", String(targetListId)), { items: updatedItems });
+        }
+      } 
+      // 3. Sinon, on la supprime de l'Inbox
+      else if (!taskToDelete.isSubtask || taskToDelete.sourceListName === 'Inbox') {
+        if (taskToDelete.id) {
+          // Ajout de String()
+          await deleteDoc(doc(db, "todos", String(taskToDelete.id)));
+        }
+      }
+
+      if (refreshEvents) refreshEvents();
+      
+      setTaskToDelete(null);
+    } catch (e) {
+      console.error("Erreur suppression:", e);
     }
-    setTaskToDelete(null); // Ferme la modal
   };
 
   // DÉPLACER UNE TÂCHE VERS UNE LISTE
@@ -130,14 +158,42 @@ export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEve
 
   // DÉ-PLANIFIER (Enlever la date)
   const handleUnplan = async (task) => {
-    if (task.isFromList) {
-      const list = allLists.find(l => l.id === task.listId);
-      const updatedItems = list.items.map(item => 
-        item.id === task.id ? { ...item, dueDate: null } : item
-      );
-      await updateDoc(doc(db, "lists", task.listId), { items: updatedItems });
-    } else {
-      await updateDoc(doc(db, "todos", task.id), { dueDate: null });
+    try {
+      // 1. Casser le lien dans l'événement (Timeline)
+      const eId = task.linkedEventId || task.eventId;
+      if (eId) {
+        const targetEvent = events.find(e => e.id === eId);
+        if (targetEvent && targetEvent.subtasks) {
+          const updatedSubtasks = targetEvent.subtasks.filter(s => s.id !== task.id);
+          // Ajout de String()
+          await setDoc(doc(db, "task_details", String(eId)), { subtasks: updatedSubtasks }, { merge: true });
+        }
+      }
+
+      // 2. Retirer la date et le lien de la liste source
+      const targetListId = task.listId || task.sourceListId;
+      if (task.isFromList && targetListId) {
+        const list = allLists.find(l => l.id === targetListId);
+        if (list) {
+          const updatedItems = list.items.map(item => 
+            item.id === task.id ? { ...item, dueDate: null, linkedEventId: null, linkedEventSummary: null } : item
+          );
+          // Ajout de String()
+          await updateDoc(doc(db, "lists", String(targetListId)), { items: updatedItems });
+        }
+      } 
+      // 3. Sinon, retirer la date de l'Inbox
+      else if (!task.isSubtask || task.sourceListName === 'Inbox') {
+        if (task.id) {
+          // LIGNE 145 CORRIGÉE : Ajout de String()
+          await updateDoc(doc(db, "todos", String(task.id)), { dueDate: null, linkedEventId: null, linkedEventSummary: null });
+        }
+      }
+
+      if (refreshEvents) refreshEvents();
+      
+    } catch (e) {
+      console.error("Erreur dé-planification:", e);
     }
   };
 
@@ -215,14 +271,14 @@ export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEve
             ...sub,
             isSubtask: true,         
             eventId: event.id,       
+            
+            linkedEventId: event.id, 
+            listId: sub.sourceListId,
+            isFromList: !!sub.sourceListId,
+            
             subtasksArray: event.subtasks,
-            
-            // IDENTITÉ : On affiche le nom de la liste source (Thales)
             listName: sub.sourceListName || event.summary, 
-            // LIEN : On garde le nom de l'événement pour l'afficher en badge (Travail)
             linkedEventSummary: event.summary, 
-            
-            // STYLE : On donne la priorité à la couleur de la liste source
             listColor: sourceList ? sourceList.color : catData.color,
             icon: catData.icon
           });

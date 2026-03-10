@@ -419,6 +419,7 @@ function App() {
           events={events} 
           onToggleSubtask={handleToggleSubtask}
           onLinkTaskToEvent={handleLinkTaskToEvent}
+          refreshEvents={fetchAllEvents}
           />
         ) : activeTab === 'lists' ? (
           <ListsView />
