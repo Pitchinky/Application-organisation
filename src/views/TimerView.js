@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Coffee, Brain, Settings, X, Check } from 'lucide-react';
+import { Play, Pause, RotateCcw, Coffee, Brain, Settings, X } from 'lucide-react';
+import { db } from '../firebaseConfig';
+import { collection, onSnapshot } from "firebase/firestore";
 import './TimerView.css';
 
 export default function TimerView() {
-  // Durées en minutes (par défaut 25 et 5)
+  // --- ÉTATS DU MINUTEUR ---
   const [workDuration, setWorkDuration] = useState(25);
   const [breakDuration, setBreakDuration] = useState(5);
   
@@ -12,8 +14,57 @@ export default function TimerView() {
   const [isWorkMode, setIsWorkMode] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   
+  // --- NOUVEAUX ÉTATS POUR LES TÂCHES (INTENTION) ---
+  const [sessionTasks, setSessionTasks] = useState([]); 
+  const [taskInput, setTaskInput] = useState(""); 
+  const [availableTasks, setAvailableTasks] = useState([]); 
+  const [showTaskMenu, setShowTaskMenu] = useState(false); 
+
   const timerRef = useRef(null);
 
+  // --- SYNCHRONISATION FIREBASE (TÂCHES DU JOUR) ---
+  useEffect(() => {
+    // On génère la date d'aujourd'hui (YYYY-MM-DD)
+    const todayString = new Date().toISOString().split('T')[0];
+    
+    let currentTodos = [];
+    let currentListItems = [];
+
+    // Fonction pour fusionner et filtrer "Aujourd'hui" et "En retard"
+    const updateAvailableTasks = () => {
+      const combinedTasks = [...currentTodos, ...currentListItems];
+      const todayTasks = combinedTasks.filter(t => 
+        !t.completed && 
+        t.dueDate && 
+        t.dueDate <= todayString // <= permet de prendre aujourd'hui ET les tâches en retard
+      );
+      setAvailableTasks(todayTasks);
+    };
+
+    // 1. Écouter l'Inbox
+    const unsubTodos = onSnapshot(collection(db, "todos"), (snap) => {
+      currentTodos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      updateAvailableTasks();
+    });
+
+    // 2. Écouter les listes personnalisées (Sport, Travail, etc.)
+    const unsubLists = onSnapshot(collection(db, "lists"), (snap) => {
+      const listsData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      currentListItems = [];
+      listsData.forEach(list => {
+        // On ignore la liste de courses
+        if (list.icon !== 'cart' && list.items) {
+          currentListItems.push(...list.items);
+        }
+      });
+      updateAvailableTasks();
+    });
+    
+    return () => {
+      unsubTodos();
+      unsubLists();
+    };
+  }, []);
 
   // Synchroniser le temps restant quand on change les réglages (si le timer est arrêté)
   useEffect(() => {
@@ -56,9 +107,15 @@ export default function TimerView() {
     const ntfyIconUrl = `https://emojicdn.elk.sh/${encodeURIComponent(iconEmoji)}`;
 
     // --- 2. CONFIGURATION DISCORD (2ème Cerveau) ---
-    const discordWebhookUrl = "https://discordapp.com/api/webhooks/1481244962103365795/admhCTVeKxs8F-j5H-r_v0OdaZOne5tEsHGwK-WxJfJszTTK1-EYiNrSewhozSjdj0zh"; // <-- Mets ton vrai lien ici !
+    const discordWebhookUrl = "https://discordapp.com/api/webhooks/1481244962103365795/admhCTVeKxs8F-j5H-r_v0OdaZOne5tEsHGwK-WxJfJszTTK1-EYiNrSewhozSjdj0zh";
+    
+    // On formate la liste des tâches avec des petits tirets
+    const tasksFormatted = sessionTasks.length > 0 
+      ? sessionTasks.map(tache => `> 🔹 ${tache}`).join('\n')
+      : `> 🔹 Mode Focus Libre`;
+
     const discordMessage = isWorkMode 
-      ? `🍅 **Pomodoro Terminé !**\nBravo, tu viens de boucler une session de focus de **${workDuration} minutes**.`
+      ? `🍅 **Session Terminée ! (${workDuration} min)**\n**Objectifs accomplis :**\n${tasksFormatted}`
       : `☕ **Pause Terminée !**\nC'est l'heure de s'y remettre.`;
     
     // --- 3. ENVOI DES DEUX ALERTES ---
@@ -83,6 +140,11 @@ export default function TimerView() {
         body: JSON.stringify({ content: discordMessage })
       });
       console.log("✅ Message archivé dans Discord !");
+
+      // 🧹 ON VIDE LA LISTE POUR LE PROCHAIN POMODORO !
+      if (isWorkMode) {
+        setSessionTasks([]);
+      }
 
     } catch (err) {
       console.error("❌ Erreur d'envoi (Ntfy ou Discord):", err);
@@ -113,7 +175,7 @@ export default function TimerView() {
   };
 
   return (
-    <div className="timer-page">
+    <div className="timer-page" onClick={() => setShowTaskMenu(false)}>
       <div className="timer-header">
         <h1 className="timer-app-title">Pomodoro</h1>
         <div className="segmented-picker">
@@ -127,6 +189,82 @@ export default function TimerView() {
       </div>
 
       <div className="timer-container">
+        
+        {/* --- ZONE D'INTENTION DU POMODORO --- */}
+        {isWorkMode && (
+          <div className="pomodoro-intention-section" style={{ marginBottom: '30px', textAlign: 'center', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            
+            {/* Champ de saisie */}
+            <div style={{ position: 'relative', width: '100%', maxWidth: '300px' }} onClick={e => e.stopPropagation()}>
+              <input 
+                type="text" 
+                placeholder="Sur quoi vas-tu travailler ?" 
+                value={taskInput}
+                onChange={(e) => setTaskInput(e.target.value)}
+                onFocus={() => setShowTaskMenu(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && taskInput.trim()) {
+                    setSessionTasks([...sessionTasks, taskInput]);
+                    setTaskInput("");
+                    setShowTaskMenu(false);
+                  }
+                }}
+                style={{ 
+                  width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E5E5EA',
+                  backgroundColor: '#F2F2F7', fontSize: '15px', color: '#1C1C1E', outline: 'none'
+                }}
+              />
+              
+              {/* Menu déroulant avec tes vraies tâches du jour */}
+              {showTaskMenu && availableTasks.length > 0 && (
+                <div style={{ 
+                  position: 'absolute', top: '110%', left: 0, right: 0, background: 'white', 
+                  border: '1px solid #E5E5EA', borderRadius: '12px', zIndex: 10, 
+                  maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
+                }}>
+                  {availableTasks.map(t => (
+                    <div 
+                      key={t.id} 
+                      onClick={() => {
+                        setSessionTasks([...sessionTasks, t.text]);
+                        setTaskInput("");
+                        setShowTaskMenu(false);
+                      }}
+                      style={{ 
+                        padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid #F2F2F7', 
+                        textAlign: 'left', color: '#1C1C1E', fontSize: '15px' 
+                      }}
+                    >
+                      {t.text}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Affichage des tâches sélectionnées pour ce chrono */}
+            {sessionTasks.length > 0 && (
+              <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', maxWidth: '300px' }}>
+                {sessionTasks.map((t, index) => (
+                  <span key={index} style={{ 
+                    background: '#5856D6', color: 'white', padding: '6px 12px', 
+                    borderRadius: '20px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' 
+                  }}>
+                    {t}
+                    <button 
+                      onClick={() => setSessionTasks(sessionTasks.filter((_, i) => i !== index))} 
+                      style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: 0, display: 'flex' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {/* --- FIN ZONE D'INTENTION --- */}
+
         <div className="timer-display">
           <svg className="timer-svg" viewBox="0 0 160 160">
             <circle className="timer-bg" cx="80" cy="80" r="70" />
@@ -154,11 +292,10 @@ export default function TimerView() {
                 {isActive ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" style={{ marginLeft: '4px' }} />}
             </button>
 
-            {/* ICI : On remplace Bell par Settings */}
             <button className="control-btn secondary" onClick={() => setShowSettings(true)}>
                 <Settings size={24} />
             </button>
-            </div>
+        </div>
       </div>
 
       {/* MODAL DE RÉGLAGES PERSONNALISÉS */}
