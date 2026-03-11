@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Coffee, Brain, Settings, X } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import { collection, onSnapshot, doc, setDoc } from "firebase/firestore";
+import { addDoc } from "firebase/firestore";
 import './TimerView.css';
 
-export default function TimerView({ events = [] }) {
+export default function TimerView({ events = [], userId }) {
   // --- ÉTATS DU MINUTEUR ---
   const [workDuration, setWorkDuration] = useState(25);
   const [breakDuration, setBreakDuration] = useState(5);
@@ -83,10 +84,23 @@ export default function TimerView({ events = [] }) {
     setIsActive(false);
     clearInterval(timerRef.current);
     sendNotifications();
+    queueNotification();
     const nextMode = !isWorkMode;
     setIsWorkMode(nextMode);
     setTimeLeft(nextMode ? workDuration * 60 : breakDuration * 60);
   };
+
+  const queueNotification = async () => {
+  if (!userId) return;
+  
+  await addDoc(collection(db, "notifications_queue"), {
+    userId: userId,
+    title: isWorkMode ? "Session Terminée ! 🍅" : "Pause Terminée ! ☕",
+    body: isWorkMode ? "C'est l'heure de souffler un peu." : "Prêt pour un nouveau focus ?",
+    scheduledTime: new Date().getTime(), // Envoi immédiat ou décalé
+    status: "pending"
+  });
+};
 
   const sendNotifications = async () => {
     const discordWebhookUrl = "https://discordapp.com/api/webhooks/1481244962103365795/admhCTVeKxs8F-j5H-r_v0OdaZOne5tEsHGwK-WxJfJszTTK1-EYiNrSewhozSjdj0zh";

@@ -20,6 +20,7 @@ import AddTaskModal from './components/shared/AddTaskModal';
 import RecurringChoiceModal from './components/shared/RecurringChoiceModal';
 import DeleteModal from './components/shared/DeleteModal';
 import { getDailySummary } from './utils/weatherLogic';
+import { requestForToken } from './utils/pushNotifications';
 
 // FIREBASE
 import { db, auth, provider } from './firebaseConfig';
@@ -48,6 +49,7 @@ function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
   const [todayEvents, setTodayEvents] = useState([]);
+  const [userId, setUserId] = useState(null);
 
   // États Formulaire/Google
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -147,6 +149,9 @@ function App() {
         let token = localStorage.getItem('g_token');
         let expiry = localStorage.getItem('g_expiry');
         let email = localStorage.getItem('user_email');
+
+        setUserId(user.uid);
+        requestForToken(user.uid);
 
         // Récupération Firestore si le stockage local est vide ou expiré
         if (!token || !email || (expiry && Date.now() > parseInt(expiry))) {
@@ -467,6 +472,7 @@ useEffect(() => {
         ) : activeTab === 'timer' ? (
           <TimerView 
           events={todayEvents}
+          userId={userId}
           />
 
         ) : activeTab === 'settings' ? (

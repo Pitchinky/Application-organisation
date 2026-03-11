@@ -3,6 +3,7 @@ import { getFirestore } from "firebase/firestore"; // Importe Firestore
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
+
 const firebaseConfig = {
   apiKey: "AIzaSyCwq64pM43q1jn6Mm9RrWCzUwmuL1RidbM",
   authDomain: "mon-application-organisation.firebaseapp.com",
@@ -30,9 +31,7 @@ provider.addScope('https://www.googleapis.com/auth/calendar.readonly'); // Optio
 
 // Ajout du Messaging
 // On ne lance la messagerie que si Apple l'autorise
-export const messaging = (typeof window !== 'undefined' && 'serviceWorker' in navigator) 
-  ? getMessaging(app) 
-  : null;
+export const messaging = getMessaging(app);
 
 // Fonction pour demander la permission et récupérer le Token
 export const requestForToken = () => {
