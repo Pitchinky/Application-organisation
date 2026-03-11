@@ -14,6 +14,11 @@ export default function TimerView() {
   
   const timerRef = useRef(null);
 
+  // Dans la fonction sendNotifications :
+  const iconUrl = isWorkMode 
+  ? "https://emojicdn.elk.sh/🧠" 
+  : "https://emojicdn.elk.sh/☕️";
+
   // Synchroniser le temps restant quand on change les réglages (si le timer est arrêté)
   useEffect(() => {
     if (!isActive) {
@@ -46,22 +51,27 @@ export default function TimerView() {
   };
 
   const sendNotifications = async () => {
-    // Supprime les emojis des chaînes de texte ici pour le titre
-    const title = isWorkMode ? "Session Terminee" : "Pause Terminee";
+    // 1. Définition du texte
+    const title = isWorkMode ? "Session Terminée" : "Pause Terminée";
     const message = isWorkMode 
       ? `Bravo ! Tu as fini ${workDuration}min de focus.`
-      : "La pause est finie. Pret a repartir ?";
+      : "La pause est finie. Prêt à repartir ?";
+    
+    // 2. Définition de l'icône HD (Remplace la cloche par défaut)
+    const iconUrl = isWorkMode 
+      ? "https://emojicdn.elk.sh/🍅" // Une belle tomate HD (ou 🧠 si tu préfères)
+      : "https://emojicdn.elk.sh/☕️"; // Un beau café HD
     
     try {
       await fetch('https://ntfy.sh/mon_application_organisation', {
         method: 'POST',
-        body: message, // Le corps (body) supporte les emojis, mais pas les headers
+        body: message, 
         headers: { 
-          // ON UTILISE DU TEXTE SIMPLE POUR LE TITRE
           'Title': title, 
-          // NTFY TRANSFORMERA "brain" EN 🧠 ET "coffee" EN ☕️ AUTOMATIQUEMENT
-          'Tags': isWorkMode ? 'brain' : 'coffee', 
-          'Priority': 'high' 
+          // Tags ajoute des petits emojis d'accompagnement à côté du titre
+          'Tags': isWorkMode ? 'brain,tada' : 'coffee,battery', 
+          'Priority': 'high',
+          'Icon': iconUrl // <-- C'est ici qu'on insère l'image !
         }
       });
     } catch (err) {
