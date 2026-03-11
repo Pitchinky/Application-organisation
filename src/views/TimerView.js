@@ -47,29 +47,45 @@ export default function TimerView() {
   };
 
   const sendNotifications = async () => {
-    // 1. Définition du texte
-    const title = isWorkMode ? "Session Terminee" : "Pause Terminee"; // J'ai retiré les accents des headers par sécurité
-    const message = isWorkMode 
+    // --- 1. CONFIGURATION NTFY (Téléphone) ---
+    const ntfyTitle = isWorkMode ? "Session Terminee" : "Pause Terminee";
+    const ntfyMessage = isWorkMode 
       ? `Bravo ! Tu as fini ${workDuration}min de focus.`
       : "La pause est finie. Prêt à repartir ?";
-    
-    // 2. Définition de l'icône avec encodage de l'emoji !
     const iconEmoji = isWorkMode ? '🧠' : '☕️';
-    const iconUrl = `https://emojicdn.elk.sh/${encodeURIComponent(iconEmoji)}`;
+    const ntfyIconUrl = `https://emojicdn.elk.sh/${encodeURIComponent(iconEmoji)}`;
+
+    // --- 2. CONFIGURATION DISCORD (2ème Cerveau) ---
+    const discordWebhookUrl = "https://discordapp.com/api/webhooks/1481244962103365795/admhCTVeKxs8F-j5H-r_v0OdaZOne5tEsHGwK-WxJfJszTTK1-EYiNrSewhozSjdj0zh"; // <-- Mets ton vrai lien ici !
+    const discordMessage = isWorkMode 
+      ? `🍅 **Pomodoro Terminé !**\nBravo, tu viens de boucler une session de focus de **${workDuration} minutes**.`
+      : `☕ **Pause Terminée !**\nC'est l'heure de s'y remettre.`;
     
+    // --- 3. ENVOI DES DEUX ALERTES ---
     try {
+      // Envoi vers le téléphone (ntfy)
       await fetch('https://ntfy.sh/mon_application_organisation', {
         method: 'POST',
-        body: message, 
+        body: ntfyMessage, 
         headers: { 
-          'Title': title, 
+          'Title': ntfyTitle, 
           'Tags': isWorkMode ? 'brain,tada' : 'coffee,battery', 
           'Priority': 'high',
-          'Icon': iconUrl 
+          'Icon': ntfyIconUrl 
         }
       });
+      console.log("✅ Notification Ntfy envoyée sur le téléphone !");
+
+      // Envoi vers Discord
+      await fetch(discordWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: discordMessage })
+      });
+      console.log("✅ Message archivé dans Discord !");
+
     } catch (err) {
-      console.error("Erreur notification:", err);
+      console.error("❌ Erreur d'envoi (Ntfy ou Discord):", err);
     }
   };
 
