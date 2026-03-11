@@ -14,10 +14,6 @@ export default function TimerView() {
   
   const timerRef = useRef(null);
 
-  // Dans la fonction sendNotifications :
-  const iconUrl = isWorkMode 
-  ? "https://emojicdn.elk.sh/🧠" 
-  : "https://emojicdn.elk.sh/☕️";
 
   // Synchroniser le temps restant quand on change les réglages (si le timer est arrêté)
   useEffect(() => {
@@ -52,15 +48,14 @@ export default function TimerView() {
 
   const sendNotifications = async () => {
     // 1. Définition du texte
-    const title = isWorkMode ? "Session Terminée" : "Pause Terminée";
+    const title = isWorkMode ? "Session Terminee" : "Pause Terminee"; // J'ai retiré les accents des headers par sécurité
     const message = isWorkMode 
       ? `Bravo ! Tu as fini ${workDuration}min de focus.`
       : "La pause est finie. Prêt à repartir ?";
     
-    // 2. Définition de l'icône HD (Remplace la cloche par défaut)
-    const iconUrl = isWorkMode 
-      ? "https://emojicdn.elk.sh/🍅" // Une belle tomate HD (ou 🧠 si tu préfères)
-      : "https://emojicdn.elk.sh/☕️"; // Un beau café HD
+    // 2. Définition de l'icône avec encodage de l'emoji !
+    const iconEmoji = isWorkMode ? '🧠' : '☕️';
+    const iconUrl = `https://emojicdn.elk.sh/${encodeURIComponent(iconEmoji)}`;
     
     try {
       await fetch('https://ntfy.sh/mon_application_organisation', {
@@ -68,10 +63,9 @@ export default function TimerView() {
         body: message, 
         headers: { 
           'Title': title, 
-          // Tags ajoute des petits emojis d'accompagnement à côté du titre
           'Tags': isWorkMode ? 'brain,tada' : 'coffee,battery', 
           'Priority': 'high',
-          'Icon': iconUrl // <-- C'est ici qu'on insère l'image !
+          'Icon': iconUrl 
         }
       });
     } catch (err) {
