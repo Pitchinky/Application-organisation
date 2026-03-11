@@ -465,7 +465,9 @@ useEffect(() => {
           <HabitView />
 
         ) : activeTab === 'timer' ? (
-          <TimerView />
+          <TimerView 
+          events={todayEvents}
+          />
 
         ) : activeTab === 'settings' ? (
           <SettingsView calendars={calendars} selectedCalendarIds={selectedCalendarIds} toggleCalendar={(id)=>setSelectedCalendarIds(p=>p.includes(id)?p.filter(i=>i!==id):[...p,id])} handleLogout={()=>{auth.signOut(); localStorage.clear(); window.location.reload();}} />
