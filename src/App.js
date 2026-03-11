@@ -47,7 +47,8 @@ function App() {
   const [showCalMenu, setShowCalMenu] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
-  
+  const [todayEvents, setTodayEvents] = useState([]);
+
   // États Formulaire/Google
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskTime, setNewTaskTime] = useState("12:00");
@@ -229,6 +230,7 @@ function App() {
     };
   }, [isSignedIn, tokenClient]);
 
+
   // --- LOGIQUE API ---
   const loadData = async () => {
     try { 
@@ -261,7 +263,7 @@ function App() {
     } catch(e) { if (e.status === 401) setIsSignedIn(false); } finally { setIsLoading(false); }
   }, [currentDate, selectedCalendarIds, isSignedIn, calendars]);
 
-  useEffect(() => { if (isSignedIn && gapiReady) fetchAllEvents(); }, [fetchAllEvents, isSignedIn, gapiReady]);
+ 
 
   // --- LOGIQUE ACTIONS (Subtasks, Edit, Delete, etc.) ---
   const handleToggleSubtask = async (eventId, subtasksArray, subtaskId) => {
@@ -398,6 +400,41 @@ function App() {
     }
   };
 
+  // App.js - À placer après fetchAllEvents
+  const fetchTodayOnly = useCallback(async () => {
+    if (selectedCalendarIds.length === 0 || !isSignedIn) return;
+    try {
+      const today = new Date();
+      const start = new Date(today); start.setHours(0,0,0,0);
+      const end = new Date(today); end.setHours(23,59,59,999);
+      
+      const promises = selectedCalendarIds.map(async (calId) => {
+        const r = await gapi.client.calendar.events.list({ 
+          'calendarId': calId, 'timeMin': start.toISOString(), 'timeMax': end.toISOString(), 
+          'singleEvents': true 
+        });
+        if (!r.result.items) return [];
+        return await Promise.all(r.result.items.map(async (event) => {
+          const docSnap = await getDoc(doc(db, "task_details", event.id));
+          return { ...event, subtasks: docSnap.exists() ? docSnap.data().subtasks : [] };
+        }));
+      });
+      const res = await Promise.all(promises);
+      setTodayEvents(res.flat());
+    } catch(e) { console.error(e); }
+  }, [selectedCalendarIds, isSignedIn]);
+
+  // App.js - Vers la ligne 400
+useEffect(() => { 
+  if (isSignedIn && gapiReady) {
+    fetchAllEvents();  // Pour la Timeline
+    fetchTodayOnly();  // AJOUTE CECI pour l'onglet Focus
+  } 
+}, [fetchAllEvents, fetchTodayOnly, isSignedIn, gapiReady]);
+
+
+
+
 
   const todaySummary = getDailySummary(new Date(), forecast);
   const Layout = isDesktop ? DesktopLayout : MobileLayout;
@@ -416,7 +453,7 @@ function App() {
         />
         ) : activeTab === 'to_do' ? (
           <ToDoView 
-          events={events} 
+          events={todayEvents} 
           onToggleSubtask={handleToggleSubtask}
           onLinkTaskToEvent={handleLinkTaskToEvent}
           refreshEvents={fetchAllEvents}

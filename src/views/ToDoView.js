@@ -259,23 +259,23 @@ export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEve
   
     // --- 3. RÉCUPÉRATION DES TÂCHES LIÉES AUX ÉVÉNEMENTS ---
     events.forEach(event => {
-      if (event.subtasks && event.subtasks.length > 0) {
-        // On récupère le style de l'événement (ex: Travail -> Bleu)
+      // 1. On calcule la date de l'événement (YYYY-MM-DD)
+      const eventDate = (event.start.dateTime || event.start.date).split('T')[0];
+
+      // 2. On ne traite l'événement QUE s'il correspond à la date réelle d'aujourd'hui
+      if (eventDate === todayStr && event.subtasks && event.subtasks.length > 0) {
         const catData = getCategoryData(event.summary); 
   
         event.subtasks.forEach(sub => {
-          // On essaie de retrouver la couleur originale de la liste (ex: Thales)
           const sourceList = allLists.find(l => l.id === sub.sourceListId);
   
           today.push({
             ...sub,
             isSubtask: true,         
             eventId: event.id,       
-            
             linkedEventId: event.id, 
             listId: sub.sourceListId,
             isFromList: !!sub.sourceListId,
-            
             subtasksArray: event.subtasks,
             listName: sub.sourceListName || event.summary, 
             linkedEventSummary: event.summary, 
