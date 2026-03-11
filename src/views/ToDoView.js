@@ -348,6 +348,25 @@ export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEve
   });
 
 
+    // --- FILTRES POUR "À PLANIFIER" ---
+    const getPlanifierFilterOptions = () => {
+      const options = [{ id: 'all', name: 'Tout', type: 'all', color: '#8E8E93' }];
+      unplannedLists.forEach(list => {
+        options.push({ id: list.id, name: list.name, type: 'list', color: list.color });
+      });
+      return options;
+    };
+
+    const planifierFilterOptions = getPlanifierFilterOptions();
+
+    // Filtrage effectif des listes "À Planifier"
+    const filteredUnplannedLists = unplannedLists.filter(list => {
+      if (activeFilter.type === 'all') return true;
+      if (activeFilter.type === 'list') return list.id === activeFilter.id;
+      return false;
+    });
+
+
   return (
     <div className="todo-page">
 
@@ -355,22 +374,20 @@ export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEve
       <div className="todo-header-premium">
         <h1 className="todo-app-title">Focus</h1>
         <div className="segmented-picker">
-
-          <button className={activeTab === 'today' ? 'active' : ''} onClick={() => setActiveTab('today')}>
+          <button className={activeTab === 'today' ? 'active' : ''} onClick={() => { setActiveTab('today'); setActiveFilter({ id: 'all', type: 'all' }); }}>
             <Star size={16} fill={activeTab === 'today' ? "currentColor" : "none"} />
             <span>Aujourd'hui</span>
           </button>
 
-          <button className={activeTab === 'planifier' ? 'active' : ''} onClick={() => setActiveTab('planifier')}>
+          <button className={activeTab === 'planifier' ? 'active' : ''} onClick={() => { setActiveTab('planifier'); setActiveFilter({ id: 'all', type: 'all' }); }}>
             <Calendar size={16} fill={activeTab === 'planifier' ? "currentColor" : "none"} />
             <span>A Planifier</span>
           </button>
 
-          <button className={activeTab === 'inbox' ? 'active' : ''} onClick={() => setActiveTab('inbox')}>
+          <button className={activeTab === 'inbox' ? 'active' : ''} onClick={() => { setActiveTab('inbox'); setActiveFilter({ id: 'all', type: 'all' }); }}>
             <Inbox size={16} fill={activeTab === 'inbox' ? "currentColor" : "none"} />
             <span>Inbox</span>
           </button>
-
         </div>
       </div>
 
@@ -440,8 +457,30 @@ export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEve
         {/* --- ONGLET À PLANIFIER --- */}
         {activeTab === 'planifier' && (
           <div className="todo-sections-gap">
-            {unplannedLists.length > 0 ? (
-              unplannedLists.map(list => (
+            
+            {/* BARRE DE FILTRES "À PLANIFIER" */}
+            {planifierFilterOptions.length > 1 && (
+              <div className="filter-pill-container">
+                {planifierFilterOptions.map(opt => (
+                  <button 
+                    key={`plan-${opt.type}-${opt.id}`}
+                    className={`filter-pill ${activeFilter.id === opt.id ? 'active' : ''}`}
+                    onClick={() => setActiveFilter(opt)}
+                    style={{ 
+                      '--pill-color': opt.color,
+                      borderColor: activeFilter.id === opt.id ? opt.color : 'transparent'
+                    }}
+                  >
+                    {opt.type === 'list' && <Hash size={12} style={{marginRight: 4}} />}
+                    {opt.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* LISTES FILTRÉES */}
+            {filteredUnplannedLists.length > 0 ? (
+              filteredUnplannedLists.map(list => (
                 <section key={list.id}>
                   {/* Titre de la liste avec sa couleur */}
                   <div className="section-label" style={{ color: list.color }}>
@@ -460,7 +499,9 @@ export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEve
                 </section>
               ))
             ) : (
-              <div className="todo-empty-card">Toutes les tâches sont planifiées !</div>
+              <div className="todo-empty-card">
+                {activeFilter.type === 'all' ? "Toutes les tâches sont planifiées !" : "Aucune tâche à planifier dans cette liste."}
+              </div>
             )}
           </div>
         )}
