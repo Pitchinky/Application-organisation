@@ -2,6 +2,7 @@
 import { getToken } from "firebase/messaging";
 import { messaging, db } from "../firebaseConfig";
 import { doc, setDoc } from "firebase/firestore"; // Change updateDoc par setDoc
+import { arrayUnion } from "firebase/firestore";
 
 export const requestForToken = async (userId) => {
   if (!userId) return;
@@ -18,8 +19,8 @@ export const requestForToken = async (userId) => {
         // --- UTILISATION DE SETDOC POUR ÉVITER L'ERREUR ---
         const userRef = doc(db, "users", userId);
         await setDoc(userRef, {
-          fcmToken: token,
-          lastSeen: new Date().toISOString()
+        fcmTokens: arrayUnion(token), // On stocke dans une liste 'fcmTokens'
+        lastSeen: new Date().toISOString()
         }, { merge: true }); // Merge: true permet de ne pas écraser le reste du profil
 
         console.log("Token sauvegardé avec succès !");
