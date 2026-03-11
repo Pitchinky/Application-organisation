@@ -22,6 +22,7 @@ export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEve
   const [taskToDelete, setTaskToDelete] = useState(null); // La tâche en attente de suppression
   const [schedulingTask, setSchedulingTask] = useState(null); // Tâche en cours de planification par date
   const [linkingTask, setLinkingTask] = useState(null); // Stocke la tâche qu'on veut lier
+  const [activeFilter, setActiveFilter] = useState({ id: 'all', type: 'all' });// Filtres
 
   // On récupère la date du jour au format YYYY-MM-DD 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -302,9 +303,50 @@ export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEve
       .filter(list => list.unplannedItems.length > 0);
   };
 
+
   const unplannedLists = getUnplannedTasksByList();
   const { overdue, today } = getAggregatedTasks(events);
   const inboxOnly = inboxTasks.filter(t => !t.dueDate); // Tâches sans date pour l'onglet Inbox
+
+    // LOGIQUE DE FILTRE
+    const getFilterOptions = () => {
+      const options = [{ id: 'all', name: 'Tout', type: 'all', color: '#8E8E93' }];
+      const seen = new Set();
+  
+      // On récupère les catégories uniques des tâches d'aujourd'hui et en retard
+      [...overdue, ...today].forEach(t => {
+        // Option pour la Liste
+        if (t.listId && !seen.has(`list-${t.listId}`)) {
+          options.push({ id: t.listId, name: t.listName, type: 'list', color: t.listColor });
+          seen.add(`list-${t.listId}`);
+        }
+        // Option pour l'Événement (Timeline)
+        const eId = t.linkedEventId || t.eventId;
+        if (eId && !seen.has(`event-${eId}`)) {
+          options.push({ id: eId, name: t.linkedEventSummary, type: 'event', color: t.listColor });
+          seen.add(`event-${eId}`);
+        }
+      });
+      return options;
+    };
+  
+    const filterOptions = getFilterOptions();
+
+  // Filtrage effectif des tâches
+  const filteredOverdue = overdue.filter(t => {
+    if (activeFilter.type === 'all') return true;
+    if (activeFilter.type === 'list') return t.listId === activeFilter.id || t.sourceListId === activeFilter.id;
+    if (activeFilter.type === 'event') return (t.linkedEventId === activeFilter.id || t.eventId === activeFilter.id);
+    return true;
+  });
+
+  const filteredToday = today.filter(t => {
+    if (activeFilter.type === 'all') return true;
+    if (activeFilter.type === 'list') return t.listId === activeFilter.id || t.sourceListId === activeFilter.id;
+    if (activeFilter.type === 'event') return (t.linkedEventId === activeFilter.id || t.eventId === activeFilter.id);
+    return true;
+  });
+
 
   return (
     <div className="todo-page">
@@ -338,12 +380,31 @@ export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEve
         {/* --- ONGLET TODAY --- */}
         {activeTab === 'today' && (
           <div className="todo-sections-gap">
+
+            {/* BARRE DE FILTRES HORIZONTALE */}
+            <div className="filter-pill-container">
+              {filterOptions.map(opt => (
+                <button 
+                  key={`${opt.type}-${opt.id}`}
+                  className={`filter-pill ${activeFilter.id === opt.id ? 'active' : ''}`}
+                  onClick={() => setActiveFilter(opt)}
+                  style={{ 
+                    '--pill-color': opt.color,
+                    borderColor: activeFilter.id === opt.id ? opt.color : 'transparent'
+                  }}
+                >
+                  {opt.type === 'event' && <Calendar size={12} style={{marginRight: 4}} />}
+                  {opt.type === 'list' && <Hash size={12} style={{marginRight: 4}} />}
+                  {opt.name}
+                </button>
+              ))}
+            </div>
             
             {/* Section En Retard */}
             {overdue.length > 0 && (
               <section>
                 <div className="section-label overdue"><AlertCircle size={14} /> EN RETARD</div>
-                {overdue.map(t => <TodoCard 
+                {filteredOverdue.map(t => <TodoCard 
                 key={t.id} 
                 task={t} onToggle={() => handleToggleTask(t)} 
                 onDelete={() => requestDelete(t)}
@@ -356,8 +417,8 @@ export default function TodoView({ events = [], onToggleSubtask, onLinkTaskToEve
             {/* Section Aujourd'hui */}
             <section>
               <div className="section-label"><CalendarIcon size={14} /> AUJOURD'HUI</div>
-              {today.length > 0 ? (
-                today.map(t => <TodoCard 
+              {filteredToday.length > 0 ? (
+                filteredToday.map(t => <TodoCard 
                   key={t.id} 
                   task={t} 
                   onToggle={() => handleToggleTask(t)} 
@@ -550,16 +611,18 @@ function TodoCard({ task, onToggle, onMove, onDelete, onPlan, onCustomDate, onUn
   return (
     <div className={`todo-card ${task.completed ? 'is-done' : ''}`}>
       <div className="todo-card-left" onClick={onToggle}>
+
         <div className="custom-checkbox">
           {task.completed ? <CheckCircle2 color="#34C759" size={24} /> : <Circle color="#C7C7CC" size={24} />}
         </div>
+
         <div className="todo-card-info">
+
           <span className="todo-card-text">{task.text}</span>
-          
+
           <div className="todo-card-meta">
+
             {/* 1. BADGE PRINCIPAL */}
-            {/* Si c'est une subtask native (sans liste source), on affiche l'icône de catégorie */}
-            {/* Sinon (tâche de liste ou liée), on affiche le Hash # */}
             <span className="meta-tag" style={{ color: task.listColor }}>
               {task.isSubtask && !task.sourceListId ? (
                 <Icon icon={task.icon} />
@@ -570,12 +633,12 @@ function TodoCard({ task, onToggle, onMove, onDelete, onPlan, onCustomDate, onUn
             </span>
             
             {/* 2. BADGE SECONDAIRE (ÉVÉNEMENT) */}
-            {/* On ne l'affiche QUE si la tâche provient d'une liste ET qu'elle est liée à un événement */}
             {task.sourceListId && task.linkedEventSummary && (
               <span className="meta-tag" style={{ color: '#8E8E93', opacity: 0.7 }}>
                 <Calendar size={10} /> {task.linkedEventSummary}
               </span>
             )}
+
           </div>
 
         </div>
