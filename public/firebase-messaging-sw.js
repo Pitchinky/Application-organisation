@@ -11,13 +11,6 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Gère les notifs quand l'app est en arrière-plan
 messaging.onBackgroundMessage((payload) => {
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/logo192.png' // Ton logo ici
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  console.log('Message reçu en arrière-plan:', payload);
 });

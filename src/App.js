@@ -146,38 +146,37 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        let token = localStorage.getItem('g_token');
-        let expiry = localStorage.getItem('g_expiry');
-        let email = localStorage.getItem('user_email');
-
         setUserId(user.uid);
         requestForToken(user.uid);
 
-        // Récupération Firestore si le stockage local est vide ou expiré
-        if (!token || !email || (expiry && Date.now() > parseInt(expiry))) {
-          const docSnap = await getDoc(doc(db, "user_sessions", user.uid));
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            token = data.g_token;
-            expiry = data.g_expiry;
-            email = data.email;
-            localStorage.setItem('g_token', token);
-            localStorage.setItem('g_expiry', expiry);
-            localStorage.setItem('user_email', email);
-          }
-        }
+        // On récupère TOUJOURS depuis Firestore pour être sûr (plus fiable que localStorage sur iPhone)
+        const docSnap = await getDoc(doc(db, "user_sessions", user.uid));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const token = data.g_token;
+          const expiry = data.g_expiry;
 
-        if (token && gapiReady) {
-          gapi.client.setToken({ access_token: token });
-          setIsSignedIn(true);
-          loadData();
+          // Si le token est encore valide
+          if (token && expiry && Date.now() < parseInt(expiry)) {
+            if (gapiReady) {
+              gapi.client.setToken({ access_token: token });
+              setIsSignedIn(true);
+              // On recharge les données immédiatement
+              loadData(); 
+            }
+          } else {
+            // Token expiré : on tente un rafraîchissement silencieux
+            if (tokenClient && data.email) {
+              tokenClient.requestAccessToken({ prompt: 'none', login_hint: data.email });
+            }
+          }
         }
       } else {
         setIsSignedIn(false);
       }
     });
     return () => unsubscribe();
-  }, [gapiReady]);
+  }, [gapiReady, tokenClient]); // Ajoute tokenClient ici
 
   // 3. Bouton de Connexion (Correction multi-comptes avec sauvegarde email)
   const handleLogin = async () => {
