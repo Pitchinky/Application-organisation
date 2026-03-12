@@ -1,638 +1,239 @@
-/* --- 1. VARIABLES GLOBALES --- */
+/* =========================================================
+   VARIABLES GLOBALES (Couleurs & Safe Areas)
+   ========================================================= */
 :root {
-  --primary-color: #007AFF; /* Bleu moderne */
-  --secondary-color: #34C759; /* Vert moderne */
-  --accent-color: #5856D6; /* Violet moderne */
-  --bg-color: #F9F9FB;
+  --primary-color: #007AFF; 
+  --secondary-color: #34C759; 
+  --accent-color: #5856D6; 
+  --bg-color: #F2F2F7;
   --panel-bg-color: #FFFFFF;
   --text-color: #1C1C1E;
   --sub-text-color: #8E8E93;
-  --border-color: #E5E5EA;
+  --border-color: rgba(60, 60, 67, 0.12);
   --shadow-color: rgba(0, 0, 0, 0.05);
-  --error-color: #FF3B30;
+  
+  --safe-top: env(safe-area-inset-top, 20px);
+  --safe-bottom: env(safe-area-inset-bottom, 20px);
 }
 
-/* --- 2. STRUCTURE GÉNÉRALE DE LA PAGE --- */
+/* =========================================================
+   1. DESIGN MOBILE (iPhone) - Par défaut
+   ========================================================= */
+
+/* --- LA PAGE (TOTALEMENT VERROUILLÉE) --- */
 .timer-page {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100dvh; /* Force la hauteur à 100% de l'écran visible */
+  width: 100vw;
   background-color: var(--bg-color);
   color: var(--text-color);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden; /* EMPÊCHE LE SCROLL DE LA PAGE ENTIÈRE */
+  box-sizing: border-box;
+  padding: var(--safe-top) 20px var(--safe-bottom) 20px;
 }
 
-/* --- 3. EN-TÊTE ET SÉLECTEUR FOCUS/PAUSE --- */
+/* --- HEADER FIXE EN HAUT --- */
 .timer-header {
+  flex-shrink: 0; /* Ne doit jamais s'écraser */
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 40px;
+  gap: 15px;
+  width: 100%;
+  margin-bottom: 20px;
+  padding-top: 10px;
 }
 
-.timer-app-title {
-  font-size: 28px;
-  font-weight: 800;
-  margin: 0;
+.timer-app-title { 
+  font-size: 28px; 
+  font-weight: 800; 
+  margin: 0; 
 }
 
-.segmented-picker {
-  display: flex;
-  background-color: #F2F2F7;
-  border-radius: 10px;
-  padding: 3px;
+.segmented-picker { 
+  display: flex; 
+  background-color: rgba(118, 118, 128, 0.12); 
+  border-radius: 9px; 
+  padding: 3px; 
+  width: 100%;
+  max-width: 300px;
 }
 
-.segmented-picker button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: none;
-  background: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--sub-text-color);
-  cursor: pointer;
-  transition: all 0.2s ease;
+.segmented-picker button { 
+  flex: 1;
+  display: flex; 
+  justify-content: center;
+  align-items: center; 
+  gap: 6px; 
+  border: none; 
+  background: none; 
+  padding: 8px 12px; 
+  border-radius: 7px; 
+  font-size: 13px; 
+  font-weight: 600; 
+  color: var(--sub-text-color); 
+  transition: 0.2s; 
 }
 
-.segmented-picker button.active {
-  background-color: var(--panel-bg-color);
-  color: var(--primary-color);
-  box-shadow: 0 2px 5px var(--shadow-color);
+.segmented-picker button.active { 
+  background-color: var(--panel-bg-color); 
+  color: var(--primary-color); 
+  box-shadow: 0 2px 5px var(--shadow-color); 
 }
 
+/* --- CONTENEUR CENTRAL (FLEXIBLE) --- */
 .timer-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex-grow: 1;
+  flex: 1; /* Prend tout l'espace disponible au centre */
   width: 100%;
-  max-width: 400px;
-  margin: 0 auto;
+  min-height: 0; /* OBLIGATOIRE pour activer le scroll interne des enfants */
 }
 
-/* --- 4. ZONE D'INTENTION ET LISTE DE TÂCHES --- */
+/* --- CERCLE DU CHRONO (FIXE) --- */
+/* Sur mobile, on le remonte visuellement au-dessus des tâches grâce à order */
+.timer-display { 
+  order: -1; /* Place le cercle tout en haut du flex container */
+  flex-shrink: 0; /* Ne rétrécit jamais */
+  position: relative; 
+  width: 220px; 
+  height: 220px; 
+  margin-bottom: 20px;
+}
 
-/* Conteneur principal de l'intention */
+.timer-svg { width: 100%; height: 100%; transform: rotate(-90deg); filter: drop-shadow(0px 10px 20px rgba(0,0,0,0.05)); }
+.timer-bg { fill: none; stroke: rgba(60, 60, 67, 0.08); stroke-width: 6; }
+.timer-progress { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.5s ease; }
+.timer-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.time { font-size: 54px; font-weight: 200; font-variant-numeric: tabular-nums; letter-spacing: -2px; }
+.mode-label { font-size: 13px; font-weight: 700; color: var(--sub-text-color); letter-spacing: 1.5px; margin-top: -5px; }
+
+/* --- CARTE DES TÂCHES --- */
 .pomodoro-intention-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* Prend la place restante sous le chrono */
   width: 100%;
+  max-width: 400px; /* Largeur max pour que ça ne s'étire pas trop sur iPad/grands tels */
+  min-height: 0; /* OBLIGATOIRE : Permet à la liste de scroller sans agrandir la carte */
   background-color: var(--panel-bg-color);
-  border-radius: 20px;
-  padding: 25px;
-  box-shadow: 0 4px 15px var(--shadow-color);
-  margin-bottom: 30px;
-  transition: transform 0.2s ease;
-  position: relative; /* CRUCIAL pour le z-index */
-  z-index: 100;       /* Très haut pour passer devant tout le reste */
-}
-
-.pomodoro-intention-section:hover {
-  transform: translateY(-2px);
-}
-
-.pomodoro-input-container {
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
   position: relative;
-  width: 100%;
+  z-index: 100;
   margin-bottom: 15px;
 }
 
-.pomodoro-input-container input {
-  width: 100%;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  background-color: #F2F2F7;
-  font-size: 16px;
-  color: var(--text-color);
-  outline: none;
-  transition: border-color 0.2s ease;
-}
+.pomodoro-input-container { flex-shrink: 0; margin-bottom: 15px; position: relative; }
+.pomodoro-input-container input { width: 100%; padding: 14px 16px; border-radius: 14px; border: none; background-color: rgba(118, 118, 128, 0.08); font-size: 16px; outline: none; box-sizing: border-box; }
 
-.pomodoro-input-container input:focus {
-  border-color: var(--primary-color);
-}
-
-/* Menu déroulant des tâches suggérées */
-.pomodoro-task-menu {
-  position: absolute;
-  top: 110%;
-  left: 0;
-  right: 0;
-  background-color: var(--panel-bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  z-index: 10;
-  max-height: 250px;
-  overflow-y: auto;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  animation: slideDown 0.3s ease;
-  z-index: 999;
-}
-
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.pomodoro-task-item {
-  padding: 14px 20px;
-  cursor: pointer;
-  border-bottom: 1px solid #F2F2F7;
-  text-align: left;
-  color: var(--text-color);
-  font-size: 15px;
-  transition: background-color 0.2s ease;
-}
-
-.pomodoro-task-item:hover {
-  background-color: #F2F2F7;
-}
-
-.pomodoro-task-item:last-child {
-  border-bottom: none;
-}
-
-/* To-Do List des tâches sélectionnées */
+/* --- LA SEULE ZONE QUI SCROLLE --- */
 .session-todo-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  width: 100%;
+  gap: 10px;
+  flex: 1; /* Remplit l'espace disponible dans la carte */
+  overflow-y: auto; /* LE SCROLL INTERNE EST ICI */
+  padding-right: 5px; /* Pour la scrollbar */
 }
 
-.session-todo-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: #F9F9FB;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  transition: all 0.2s ease;
-}
+/* Cache la scrollbar native pour un effet plus "App" */
+.session-todo-list::-webkit-scrollbar { width: 4px; }
+.session-todo-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
 
-.session-todo-item:hover {
-  background-color: #F2F2F7;
-  border-color: var(--primary-color);
-}
+.session-todo-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 0.5px solid var(--border-color); }
+.session-todo-content { display: flex; align-items: center; gap: 14px; cursor: pointer; }
+.session-todo-checkbox { appearance: none; width: 24px; height: 24px; border: 1.5px solid #C7C7CC; border-radius: 50%; outline: none; transition: 0.2s; position: relative; }
+.session-todo-checkbox:checked { background-color: var(--primary-color); border-color: var(--primary-color); }
+.session-todo-checkbox:checked::after { content: ""; position: absolute; top: 4px; left: 8px; width: 4px; height: 10px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.session-todo-text { font-size: 16px; transition: 0.2s; }
+.session-todo-item.completed .session-todo-text { color: var(--sub-text-color); text-decoration: line-through; }
+.session-todo-remove { background: none; border: none; color: #C7C7CC; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 5px; }
+.clear-session-btn { flex-shrink: 0; margin-top: 15px; background: none; border: 1px dashed var(--sub-text-color); padding: 10px; border-radius: 12px; color: var(--sub-text-color); font-weight: 600; font-size: 13px; cursor: pointer; width: 100%; box-sizing: border-box;}
 
-.session-todo-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.session-todo-checkbox {
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border-color);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  outline: none;
-}
-
-.session-todo-checkbox:checked {
-  background-color: var(--accent-color);
-  border-color: var(--accent-color);
-  position: relative;
-}
-
-.session-todo-checkbox:checked::after {
-  content: "✔";
-  color: white;
-  font-size: 12px;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.session-todo-text {
-  font-size: 16px;
-  font-weight: 500;
-  transition: color 0.2s ease;
-}
-
-.session-todo-item.completed .session-todo-text {
-  color: var(--sub-text-color);
-  text-decoration: line-through;
-}
-
-.session-todo-remove {
-  background: none;
-  border: none;
-  color: var(--sub-text-color);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-  display: flex;
-}
-
-.session-todo-remove:hover {
-  background-color: rgba(255, 59, 48, 0.1);
-  color: var(--error-color);
-}
-
-/* --- 5. CERCLE DU CHRONOMÈTRE (SVG) --- */
-.timer-display {
-  position: relative;
-  width: 280px;
-  height: 280px;
-  margin-bottom: 40px;
-  z-index: 1;
-}
-
-.timer-svg {
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-
-.timer-bg {
-  fill: none;
-  stroke: var(--border-color);
-  stroke-width: 8;
-}
-
-.timer-progress {
-  fill: none;
-  stroke-width: 8;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.3s ease;
-}
-
-.timer-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.time {
-  font-size: 56px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-color);
-}
-
-.mode-label {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--sub-text-color);
-  letter-spacing: 1px;
-}
-
-/* --- 6. BOUTONS DE CONTRÔLE --- */
+/* --- CONTRÔLES (FIXES EN BAS) --- */
 .timer-controls {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.control-btn {
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.control-btn.secondary {
-  background-color: #F2F2F7;
-  color: var(--sub-text-color);
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.control-btn.secondary:hover {
-  background-color: #E5E5EA;
-  color: var(--text-color);
-}
-
-.control-btn.play-pause {
-  background-color: var(--primary-color);
-  color: white;
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 10px rgba(0, 122, 255, 0.3);
-}
-
-.control-btn.play-pause:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 15px rgba(0, 122, 255, 0.4);
-}
-
-.control-btn.play-pause.active {
-  background-color: var(--primary-color);
-}
-
-/* --- 7. MODALE DE RÉGLAGES --- */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.3); /* Fond légèrement plus clair */
-  backdrop-filter: blur(8px); /* Effet de flou moderne (Glassmorphism) */
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 1000;
-  display: flex;
-  justify-content: center;
-  align-items: center; /* Centre la modale verticalement */
-  animation: fadeIn 0.3s ease;
-  padding: 20px;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.modal-sheet {
-  background-color: var(--panel-bg-color);
-  border-radius: 24px; /* Coins arrondis sur tous les côtés */
+  gap: 40px;
   width: 100%;
-  max-width: 420px;
-  padding: 30px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15); /* Ombre plus douce et diffuse */
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Effet d'apparition rebondissant */
+  padding-top: 10px;
 }
 
-@keyframes popIn {
-  0% { opacity: 0; transform: scale(0.9) translateY(20px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
+.control-btn { border: none; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: transform 0.2s; }
+.control-btn:active { transform: scale(0.9); }
+.control-btn.secondary { background-color: rgba(118, 118, 128, 0.12); color: var(--text-color); width: 50px; height: 50px; }
+.control-btn.play-pause { background-color: var(--primary-color); color: white; width: 75px; height: 75px; box-shadow: 0 10px 25px rgba(0, 122, 255, 0.4); }
+
+/* --- MODALE ET MENUS --- */
+.pomodoro-task-menu { position: absolute; top: 110%; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 0.5px solid var(--border-color); border-radius: 16px; z-index: 999; max-height: 250px; overflow-y: auto; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15); }
+.pomodoro-task-item { padding: 14px 20px; border-bottom: 0.5px solid var(--border-color); font-size: 16px; cursor: pointer; }
+.task-source-label { display: block; font-size: 11px; color: var(--accent-color); font-weight: 700; text-transform: uppercase; margin-bottom: 2px;}
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; }
+.modal-sheet { background: var(--panel-bg-color); border-radius: 24px; width: 100%; max-width: 400px; padding: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-close-btn { background: rgba(118, 118, 128, 0.12); border: none; color: var(--sub-text-color); border-radius: 50%; padding: 6px; display: flex; cursor: pointer;}
+.settings-body { display: flex; flex-direction: column; gap: 20px; }
+.setting-info { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px; }
+.setting-item input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; background: rgba(118, 118, 128, 0.15); border-radius: 10px; outline: none; }
+.setting-item input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.2); cursor: pointer; border: 1px solid rgba(0,0,0,0.1); }
+.settings-save-btn { width: 100%; background: var(--primary-color); color: white; border: none; border-radius: 14px; padding: 16px; font-weight: 600; margin-top: 10px; cursor: pointer;}
+
+
+/* =========================================================
+   2. DESIGN PC / DESKTOP (Écrans larges via @media)
+   ========================================================= */
+@media (min-width: 768px) {
+  
+  /* Sur PC, on centre tout horizontalement et on donne de l'espace */
+  .timer-page {
+    align-items: center; 
+    padding: 40px 20px;
+    height: 100vh; /* Utilisation standard de vh sur desktop */
+  }
+
+  .timer-header {
+    flex-direction: row; /* Aligne le titre et le sélecteur horizontalement */
+    max-width: 500px; 
+    margin-bottom: 30px;
+  }
+  
+  .segmented-picker {
+    width: auto;
+  }
+
+  /* Le conteneur limite la largeur pour faire une belle colonne */
+  .timer-container {
+    max-width: 500px; 
+    justify-content: center; /* Centre le contenu verticalement si l'écran est très grand */
+  }
+
+  /* Le chrono est plus grand sur PC */
+  .timer-display {
+    width: 280px;
+    height: 280px;
+    margin-bottom: 30px;
+  }
+
+  .time { font-size: 64px; }
+  
+  /* La carte des tâches a une hauteur max fixe sur PC pour forcer le scroll interne */
+  .pomodoro-intention-section {
+    flex: unset; /* Retire la propriété flex de mobile */
+    height: 350px; /* Force une hauteur précise */
+    margin-bottom: 30px;
+  }
+
+  /* Boutons plus espacés */
+  .timer-controls {
+    gap: 50px;
+    padding-top: 0;
+  }
 }
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-}
-
-.modal-header h2 {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--text-color);
-  margin: 0;
-}
-
-.modal-close-btn {
-  background: #F2F2F7;
-  border: none;
-  color: var(--sub-text-color);
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.modal-close-btn:hover {
-  background: #E5E5EA;
-  color: var(--error-color);
-  transform: rotate(90deg); /* Petite animation sympa au survol */
-}
-
-.settings-body {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-}
-
-.setting-item {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.setting-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.setting-info span:first-child {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-color);
-}
-
-.setting-info span:last-child {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--primary-color);
-  background: rgba(0, 122, 255, 0.1);
-  padding: 4px 12px;
-  border-radius: 10px;
-}
-
-/* Design moderne pour les curseurs (sliders) */
-.setting-item input[type="range"] {
-  -webkit-appearance: none;
-  width: 100%;
-  height: 8px;
-  background: #E5E5EA;
-  border-radius: 10px;
-  outline: none;
-  margin: 0;
-}
-
-.setting-item input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--primary-color);
-  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.4);
-  cursor: pointer;
-  transition: transform 0.1s;
-}
-
-.setting-item input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-}
-
-.settings-save-btn {
-  background-color: var(--text-color); /* Bouton noir/sombre très moderne */
-  color: white;
-  border: none;
-  border-radius: 16px;
-  padding: 16px;
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
-
-.settings-save-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-}
-
-/* --- 8. STYLES SUPPLÉMENTAIRES (Conservés tels quels depuis ton code d'origine) --- */
-
-:root {
-  --primary-color: #007AFF;
-  --secondary-color: #34C759;
-  --accent-color: #5856D6;
-  --border-color: #E5E5EA;
-}
-
-.timer-page {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background-color: #F9F9FB;
-  padding: 20px;
-}
-
-.timer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-}
-
-.pomodoro-intention-section {
-  width: 100%;
-  max-width: 400px;
-  background: white;
-  border-radius: 18px;
-  padding: 20px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-  margin-bottom: 30px;
-  position: relative;
-  z-index: 100; /* Priorité pour le menu déroulant */
-}
-
-.pomodoro-input-container {
-  position: relative;
-  width: 100%;
-}
-
-.pomodoro-input-container input {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  background: #F2F2F7;
-  font-size: 16px;
-  outline: none;
-}
-
-.pomodoro-task-menu {
-  position: absolute;
-  top: 105%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  z-index: 999; /* Toujours devant le reste */
-  max-height: 220px;
-  overflow-y: auto;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-}
-
-.pomodoro-task-item {
-  padding: 12px 16px;
-  border-bottom: 1px solid #F2F2F7;
-  cursor: pointer;
-  text-align: left;
-}
-
-.task-source-label {
-  display: block;
-  font-size: 10px;
-  color: var(--accent-color);
-  font-weight: bold;
-  text-transform: uppercase;
-}
-
-/* To-Do List de Session */
-.session-todo-list {
-  margin-top: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.session-todo-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px;
-  background: #F9F9FB;
-  border-radius: 10px;
-}
-
-.session-todo-content {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-}
-
-.session-todo-checkbox {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border-color);
-  border-radius: 6px;
-}
-
-.session-todo-checkbox.checked {
-  background: var(--accent-color);
-  border-color: var(--accent-color);
-}
-
-.session-todo-item.completed .session-todo-text {
-  text-decoration: line-through;
-  opacity: 0.5;
-}
-
-/* Timer et Cercles */
-.timer-display {
-  position: relative;
-  z-index: 1; /* Priorité basse */
-  width: 280px;
-  height: 280px;
-  margin-bottom: 40px;
-}
-
-.timer-svg { transform: rotate(-90deg); width: 100%; height: 100%; }
-.timer-bg { fill: none; stroke: var(--border-color); stroke-width: 8; }
-.timer-progress { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.4s ease; }
-
-.time { font-size: 60px; font-weight: 800; color: #1C1C1E; }
-.mode-label { font-size: 14px; font-weight: 700; color: #8E8E93; letter-spacing: 1px; }
-
-/* Contrôles */
-.timer-controls { display: flex; align-items: center; gap: 30px; }
-.control-btn { border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-.control-btn.secondary { background: #F2F2F7; width: 50px; height: 50px; border-radius: 50%; color: #8E8E93; }
-.control-btn.play-pause { background: var(--primary-color); width: 75px; height: 75px; border-radius: 50%; color: white; box-shadow: 0 4px 15px rgba(0,122,255,0.3); }
