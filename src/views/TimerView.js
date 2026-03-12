@@ -118,8 +118,12 @@ export default function TimerView({ events = [], userId }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: discordMessage })
       });
-      if (isWorkMode) setSessionTasks([]);
+      
     } catch (err) { console.error(err); }
+  };
+
+  const clearSessionTasks = () => {
+    setSessionTasks([]);
   };
 
   // --- AJOUTER UNE TÂCHE (LOCALE + FIREBASE INBOX) ---
@@ -193,17 +197,42 @@ export default function TimerView({ events = [], userId }) {
             </div>
 
             {sessionTasks.length > 0 && (
-              <div className="session-todo-list">
-                {sessionTasks.map((task, index) => (
-                  <div key={index} className={`session-todo-item ${task.completed ? 'completed' : ''}`}>
-                    <div className="session-todo-content" onClick={() => toggleSessionTaskCompletion(index)}>
-                      <div className={`session-todo-checkbox ${task.completed ? 'checked' : ''}`} />
-                      <span className="session-todo-text">{task.text}</span>
-                    </div>
-                    <button className="session-todo-remove" onClick={() => setSessionTasks(prev => prev.filter((_, i) => i !== index))}><X size={16} /></button>
-                  </div>
-                ))}
-              </div>
+  <>
+    <div className="session-todo-list">
+      {sessionTasks.map((task, index) => (
+        <div key={index} className={`session-todo-item ${task.completed ? 'completed' : ''}`}>
+          <div className="session-todo-content" onClick={() => toggleSessionTaskCompletion(index)}>
+            <div className={`session-todo-checkbox ${task.completed ? 'checked' : ''}`} />
+            <span className="session-todo-text">{task.text}</span>
+          </div>
+          <button className="session-todo-remove" onClick={() => setSessionTasks(prev => prev.filter((_, i) => i !== index))}>
+            <X size={16} />
+          </button>
+        </div>
+      ))}
+    </div>
+    
+                {!isActive && (
+                  <button 
+                    className="clear-session-btn" 
+                    onClick={clearSessionTasks}
+                    style={{
+                      marginTop: '15px',
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '10px',
+                      border: '1px dashed #8E8E93',
+                      background: 'none',
+                      color: '#8E8E93',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Démarrer une nouvelle liste
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
