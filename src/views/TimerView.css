@@ -16,7 +16,7 @@
   --safe-bottom: env(safe-area-inset-bottom, 20px);
   
   /* LA SOLUTION EST ICI : On définit la taille de ta NavBar du bas */
-  --nav-bar-height: 85px; 
+  --nav-bar-height: 80px; 
 }
 
 /* =========================================================
