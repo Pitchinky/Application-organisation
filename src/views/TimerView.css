@@ -27,7 +27,7 @@
 .timer-page {
   display: flex;
   flex-direction: column;
-  height: 100dvh; /* Force la hauteur à 100% de l'écran visible */
+  height: 100%; /* Force la hauteur à 100% de l'écran visible */
   width: 100vw;
   background-color: var(--bg-color);
   color: var(--text-color);
