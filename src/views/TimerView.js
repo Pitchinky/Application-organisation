@@ -1,3 +1,4 @@
+// --- 1. IMPORTATIONS ---
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Coffee, Brain, Settings, X } from 'lucide-react';
 import { db } from '../firebaseConfig';
@@ -6,7 +7,9 @@ import { addDoc } from "firebase/firestore";
 import './TimerView.css';
 
 export default function TimerView({ events = [], userId }) {
-  // --- ÉTATS DU MINUTEUR ---
+  // --- 2. ÉTATS DU COMPOSANT (VARIABLES) ---
+  
+  // États du Minuteur
   const [workDuration, setWorkDuration] = useState(25);
   const [breakDuration, setBreakDuration] = useState(5);
   const [timeLeft, setTimeLeft] = useState(workDuration * 60);
@@ -14,13 +17,15 @@ export default function TimerView({ events = [], userId }) {
   const [isWorkMode, setIsWorkMode] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   
-  // --- ÉTATS POUR LA TO-DO LIST DE SESSION ---
+  // États pour la To-Do list de la session
   const [sessionTasks, setSessionTasks] = useState([]); 
   const [taskInput, setTaskInput] = useState(""); 
   const [availableTasks, setAvailableTasks] = useState([]); 
   const [showTaskMenu, setShowTaskMenu] = useState(false); 
 
   const timerRef = useRef(null);
+
+  // --- 3. EFFETS SECONDAIRES (useEffect) ---
 
   // --- SYNCHRONISATION DES TÂCHES (TODOS + LISTS + SUBTASKS) ---
   useEffect(() => {
@@ -41,23 +46,32 @@ export default function TimerView({ events = [], userId }) {
             id: sub.id,
             text: sub.text,
             isSubtask: true,
-            parentEvent: event.summary
+            parentEvent: event.summary // On s'assure de récupérer le nom de l'événement
           }))
       );
 
       setAvailableTasks([...dbTasks, ...subTasksFromEvents]);
     };
 
+    // Récupération de l'Inbox
     const unsubTodos = onSnapshot(collection(db, "todos"), (snap) => {
       currentTodos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       updateAvailableTasks();
     });
 
+    // Récupération des Listes
     const unsubLists = onSnapshot(collection(db, "lists"), (snap) => {
       const listsData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       currentListItems = [];
       listsData.forEach(list => {
-        if (list.icon !== 'cart' && list.items) currentListItems.push(...list.items);
+        if (list.icon !== 'cart' && list.items) {
+          // CORRECTION ICI : On injecte le nom de la liste dans chaque tâche
+          const itemsWithSourceName = list.items.map(item => ({
+            ...item,
+            listName: list.title || list.name || "Liste" // On récupère le titre de la liste
+          }));
+          currentListItems.push(...itemsWithSourceName);
+        }
       });
       updateAvailableTasks();
     });
@@ -65,12 +79,12 @@ export default function TimerView({ events = [], userId }) {
     return () => { unsubTodos(); unsubLists(); };
   }, [events]);
 
-  // Synchronisation au changement de réglages
+  // Synchronisation au changement de réglages (Focus/Pause)
   useEffect(() => {
     if (!isActive) setTimeLeft(isWorkMode ? workDuration * 60 : breakDuration * 60);
   }, [workDuration, breakDuration, isWorkMode, isActive]);
 
-  // Logique du Timer
+  // Logique d'écoulement du temps du Timer
   useEffect(() => {
     if (isActive && timeLeft > 0) {
       timerRef.current = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
@@ -80,6 +94,10 @@ export default function TimerView({ events = [], userId }) {
     return () => clearInterval(timerRef.current);
   }, [isActive, timeLeft]);
 
+
+  // --- 4. FONCTIONS ET LOGIQUE MÉTIER ---
+
+  // Action exécutée quand le chrono arrive à zéro
   const handleTimerComplete = () => {
     setIsActive(false);
     clearInterval(timerRef.current);
@@ -90,43 +108,84 @@ export default function TimerView({ events = [], userId }) {
     setTimeLeft(nextMode ? workDuration * 60 : breakDuration * 60);
   };
 
+  // Ajout de la notification Push dans la file d'attente Firestore
   const queueNotification = async () => {
-  if (!userId) return;
-  
-  await addDoc(collection(db, "notifications_queue"), {
-    userId: userId,
-    title: isWorkMode ? "Session Terminée ! 🍅" : "Pause Terminée ! ☕",
-    body: isWorkMode ? "C'est l'heure de souffler un peu." : "Prêt pour un nouveau focus ?",
-    scheduledTime: new Date().getTime(), // Envoi immédiat ou décalé
-    status: "pending"
-  });
-};
+    if (!userId) return;
+    
+    // On calcule ce que tu as accompli pour personnaliser le message
+    const completedTasks = sessionTasks.filter(t => t.completed).length;
+    let pushTitle, pushBody;
+    
+    if (isWorkMode) {
+      pushTitle = "🍅 Session Terminée !";
+      pushBody = sessionTasks.length > 0 
+        ? `Bravo ! Tu as accompli ${completedTasks} tâche(s). Prends ta pause de ${breakDuration} min.`
+        : `Bravo ! Ton focus de ${workDuration} min est validé. Place à la pause.`;
+    } else {
+      pushTitle = "☕ Fin de la Pause";
+      pushBody = "La récréation est finie. Prêt à tout déchirer ?";
+    }
 
+    await addDoc(collection(db, "notifications_queue"), {
+      userId: userId,
+      title: pushTitle,
+      body: pushBody,
+      scheduledTime: new Date().getTime(),
+      status: "pending"
+    });
+  };
+
+  // Envoi du résumé de session sur Discord
   const sendNotifications = async () => {
     const discordWebhookUrl = "https://discordapp.com/api/webhooks/1481244962103365795/admhCTVeKxs8F-j5H-r_v0OdaZOne5tEsHGwK-WxJfJszTTK1-EYiNrSewhozSjdj0zh";
-    const tasksFormatted = sessionTasks.length > 0 
-      ? sessionTasks.map(t => `> ${t.completed ? '✅' : '❌'} ${t.text}`).join('\n')
-      : `> 🔹 Mode Focus Libre`;
+    
+    let embed;
 
-    const discordMessage = isWorkMode 
-      ? `🍅 **Pomodoro Terminé ! (${workDuration} min)**\n**Bilan :**\n${tasksFormatted}`
-      : `☕ **Pause Terminée !**`;
+    if (isWorkMode) {
+      // Statistiques de la session
+      const completedCount = sessionTasks.filter(t => t.completed).length;
+      const totalCount = sessionTasks.length;
+      
+      const tasksFormatted = sessionTasks.length > 0 
+        ? sessionTasks.map(t => `${t.completed ? '✅' : '⏳'} ${t.text}`).join('\n')
+        : "🔹 *Focus Libre (Aucune tâche spécifique)*";
+
+      // Construction du bloc visuel Discord
+      embed = {
+        title: "🍅 Session Focus Terminée !",
+        description: "Un nouveau cycle vient de s'achever. Excellent travail !",
+        color: 16733525, // Code couleur Rouge Pomodoro
+        fields: [
+          { name: "⏱️ Durée", value: `${workDuration} minutes`, inline: true },
+          { name: "🎯 Progression", value: `${completedCount} sur ${totalCount} tâche(s)`, inline: true },
+          { name: "📋 Bilan", value: tasksFormatted, inline: false }
+        ],
+        timestamp: new Date().toISOString()
+      };
+    } else {
+      embed = {
+        title: "☕ Fin de la Pause",
+        description: "Il est temps de s'y remettre. Quel est ton prochain objectif ?",
+        color: 3458905, // Code couleur Vert
+        timestamp: new Date().toISOString()
+      };
+    }
     
     try {
       await fetch(discordWebhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: discordMessage })
+        body: JSON.stringify({ embeds: [embed] }) // On envoie l'objet embed au lieu d'un simple texte
       });
-      
     } catch (err) { console.error(err); }
   };
 
+  // Vider la liste des tâches de la session actuelle
   const clearSessionTasks = () => {
     setSessionTasks([]);
   };
 
-  // --- AJOUTER UNE TÂCHE (LOCALE + FIREBASE INBOX) ---
+  // Ajouter une tâche (Localement + Firebase Inbox si nouvelle)
   const addSessionTask = async (text, isExisting = false) => {
     if (!text.trim()) return;
 
@@ -151,15 +210,21 @@ export default function TimerView({ events = [], userId }) {
     setShowTaskMenu(false);
   };
 
+  // Cocher/Décocher une tâche de la session
   const toggleSessionTaskCompletion = (index) => {
     setSessionTasks(prev => prev.map((t, i) => i === index ? { ...t, completed: !t.completed } : t));
   };
 
+  // Calculs pour l'animation du cercle SVG
   const percentage = (( (isWorkMode ? workDuration * 60 : breakDuration * 60) - timeLeft) / (isWorkMode ? workDuration * 60 : breakDuration * 60)) * 100;
   const strokeDashoffset = 440 - (440 * percentage) / 100;
 
+
+  // --- 5. RENDU VISUEL (JSX) ---
   return (
     <div className="timer-page" onClick={() => setShowTaskMenu(false)}>
+      
+      {/* En-tête : Titre et Sélecteur Focus/Pause */}
       <div className="timer-header">
         <h1 className="timer-app-title">Pomodoro</h1>
         <div className="segmented-picker">
@@ -172,7 +237,10 @@ export default function TimerView({ events = [], userId }) {
         </div>
       </div>
 
+      {/* Conteneur principal (Tâches + Cercle + Contrôles) */}
       <div className="timer-container">
+        
+        {/* Zone des tâches (visible uniquement en mode Focus) */}
         {isWorkMode && (
           <div className="pomodoro-intention-section">
             <div className="pomodoro-input-container" onClick={e => e.stopPropagation()}>
@@ -184,9 +252,13 @@ export default function TimerView({ events = [], userId }) {
                 onFocus={() => setShowTaskMenu(true)}
                 onKeyDown={(e) => e.key === 'Enter' && addSessionTask(taskInput, false)}
               />
-              {showTaskMenu && availableTasks.length > 0 && (
+              
+              {/* Menu déroulant des tâches suggérées */}
+              {showTaskMenu && availableTasks.filter(t => !sessionTasks.some(st => st.text === t.text)).length > 0 && (
                 <div className="pomodoro-task-menu">
-                  {availableTasks.map(t => (
+                  {availableTasks
+                    .filter(t => !sessionTasks.some(st => st.text === t.text)) /* <-- LE FILTRE MAGIQUE EST ICI */
+                    .map(t => (
                     <div key={t.id} className="pomodoro-task-item" onClick={() => addSessionTask(t.text, true)}>
                       <span className="task-source-label">{t.parentEvent || t.listName || 'Inbox'}</span>
                       {t.text}
@@ -196,6 +268,7 @@ export default function TimerView({ events = [], userId }) {
               )}
             </div>
 
+            {/* Liste des tâches sélectionnées pour la session */}
             {sessionTasks.length > 0 && (
   <>
     <div className="session-todo-list">
@@ -212,6 +285,7 @@ export default function TimerView({ events = [], userId }) {
       ))}
     </div>
     
+                {/* Bouton pour vider la liste (visible si le chrono est arrêté) */}
                 {!isActive && (
                   <button 
                     className="clear-session-btn" 
@@ -237,6 +311,7 @@ export default function TimerView({ events = [], userId }) {
           </div>
         )}
 
+        {/* Cercle d'affichage du temps restant */}
         <div className="timer-display">
           <svg className="timer-svg" viewBox="0 0 160 160">
             <circle className="timer-bg" cx="80" cy="80" r="70" />
@@ -248,6 +323,7 @@ export default function TimerView({ events = [], userId }) {
           </div>
         </div>
 
+        {/* Boutons de contrôle (Reset, Play/Pause, Réglages) */}
         <div className="timer-controls">
             <button className="control-btn secondary" onClick={() => {setIsActive(false); setTimeLeft(isWorkMode ? workDuration * 60 : breakDuration * 60);}}><RotateCcw size={24} /></button>
             <button className="control-btn play-pause" onClick={() => setIsActive(!isActive)}>{isActive ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}</button>
@@ -255,6 +331,7 @@ export default function TimerView({ events = [], userId }) {
         </div>
       </div>
 
+      {/* Modale des Réglages */}
       {showSettings && (
         <div className="modal-overlay" onClick={() => setShowSettings(false)}>
           <div className="modal-sheet" onClick={e => e.stopPropagation()}>
