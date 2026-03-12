@@ -31,7 +31,7 @@
   left: 0;
   right: 0;
   /* S'arrête exactement au-dessus de ta bottom nav bar */
-  bottom: var(--nav-total); 
+  
   
   display: flex;
   flex-direction: column;
