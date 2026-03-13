@@ -1,8 +1,15 @@
 /* src/views/SettingsView.css */
+/* src/views/SettingsView.css */
 .settings-container {
-  padding: 20px;
+  padding: 20px 20px 40px 20px; /* Un peu de marge en bas pour respirer */
   max-width: 600px;
   margin: 0 auto;
+  
+  /* --- LA MAGIE DU SCROLL EST ICI --- */
+  height: 100%; /* Prend toute la place restante */
+  overflow-y: auto; /* Active le défilement vertical */
+  -webkit-overflow-scrolling: touch; /* Défilement fluide sur iOS */
+  box-sizing: border-box; /* S'assure que le padding ne casse pas la taille */
 }
 
 .settings-header h1 {
