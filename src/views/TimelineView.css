@@ -2,7 +2,7 @@
 
 /* --- LE CONTENEUR PRINCIPAL DE LA TIMELINE --- */
 .timeline-area {
-  padding: 0px;
+  padding: 20px;
   max-width: 100%; /* Limite la largeur sur Desktop pour que ce soit joli */
   margin: 0 auto;
   
@@ -15,11 +15,13 @@
   /* On s'assure que le contenu ne passe pas sous la barre de navigation du bas */
   padding-bottom: calc(var(--nav-total) + 20px); 
   background-color: #fafafc;
+  scrollbar-width: none; 
+  -ms-overflow-style: none;
 }
 
 /* Cache la scrollbar native pour un rendu "App" (Optionnel) */
 .timeline-area::-webkit-scrollbar {
-  width: 5px;
+  display: none; 
 }
 .timeline-area::-webkit-scrollbar-thumb {
   background: var(--border-color);
