@@ -1,13 +1,66 @@
 /* src/views/TimelineView.css */
+
+/* --- LE CONTENEUR PRINCIPAL DE LA TIMELINE --- */
 .timeline-area {
-    padding: 20px;
-    max-width: 800px; /* Limite la largeur sur Desktop pour que ce soit joli */
-    margin: 0 auto;
-    min-height: 50vh;
-  }
-  .timeline-content { display: flex; flex-direction: column; }
-  .empty-state { margin: auto; text-align: center; color: var(--text-muted); font-weight: 500; display: flex; flex-direction: column; align-items: center; gap: 10px; padding-bottom: 50px; }
-  .spacer-bottom { height: var(--safe-bottom); } /* Just enough to clear the home indicator, or set to 20px if needed */
-  .loader { display: flex; justify-content: center; padding: 20px; }
-  .spinner { width: 20px; height: 20px; border: 2px solid #ccc; border-top-color: #000; border-radius: 50%; animation: spin 1s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  padding: 20px;
+  max-width: 800px; /* Limite la largeur sur Desktop pour que ce soit joli */
+  margin: 0 auto;
+  
+  /* --- LA CORRECTION EST ICI --- */
+  flex: 1; /* Permet à la zone de prendre l'espace restant sous le Header */
+  overflow-y: auto; /* REDONNE LE SCROLL SPÉCIFIQUE À CETTE VUE */
+  -webkit-overflow-scrolling: touch; /* Scroll fluide sur iPhone */
+  height: 100%; /* S'assure qu'elle remplit bien le conteneur parent */
+  
+  /* On s'assure que le contenu ne passe pas sous la barre de navigation du bas */
+  padding-bottom: calc(var(--nav-total) + 20px); 
+}
+
+/* Cache la scrollbar native pour un rendu "App" (Optionnel) */
+.timeline-area::-webkit-scrollbar {
+  width: 5px;
+}
+.timeline-area::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+
+.timeline-content { 
+  display: flex; 
+  flex-direction: column; 
+}
+
+.empty-state { 
+  margin: auto; 
+  text-align: center; 
+  color: var(--text-muted); 
+  font-weight: 500; 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 10px; 
+  padding-bottom: 50px; 
+}
+
+.spacer-bottom { 
+  height: var(--safe-bottom); 
+} 
+
+.loader { 
+  display: flex; 
+  justify-content: center; 
+  padding: 20px; 
+}
+
+.spinner { 
+  width: 20px; 
+  height: 20px; 
+  border: 2px solid #ccc; 
+  border-top-color: #000; 
+  border-radius: 50%; 
+  animation: spin 1s linear infinite; 
+}
+
+@keyframes spin { 
+  to { transform: rotate(360deg); } 
+}
