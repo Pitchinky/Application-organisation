@@ -444,7 +444,7 @@ useEffect(() => {
   const Layout = isDesktop ? DesktopLayout : MobileLayout;
 
   return (
-    <>
+    <div style={{ height: '100%', width: '100%', overflow: 'hidden' }}>
       <Layout activeTab={activeTab} setActiveTab={setActiveTab} setShowAddModal={setShowAddModal} setShowCalMenu={setShowCalMenu} showCalMenu={showCalMenu}>
         {activeTab === 'timeline' ? (
           <TimelineView 
@@ -513,7 +513,7 @@ useEffect(() => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
