@@ -1,23 +1,26 @@
 /* src/components/mobile/BottomNav.css */
 .mobile-bottom-nav {
   position: fixed;
-  left: 0;
-  right: 0;
+  left: 0; 
+  right: 0; 
   bottom: 0;
-  padding-top: 10px;
-  padding-left: var(--safe-left);
-  padding-right: var(--safe-right);
-  padding-bottom: var(--safe-bottom);;
-    background: rgba(255, 255, 255, 0.95); 
+  
+  /* Hauteur stricte : 55px pour les icônes + l'espace de l'écran iPhone en dessous */
+  height: calc(55px + env(safe-area-inset-bottom, 20px)); 
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+  padding-top: 0;
+  
+  background: rgba(255, 255, 255, 0.90); 
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-top: 0.5px solid rgba(0, 0, 0, 0.15);
+  
   display: flex;
   justify-content: space-around;
-  align-items: flex-start;  /* Push icons/text up to reduce perceived height */
-    z-index: 9999;
+  align-items: center; /* Centre parfaitement les icônes au milieu des 55px */
+  z-index: 9999;
   box-sizing: border-box;
-  }
+}
   .nav-item { 
     background: none; border: none; 
     display: flex; flex-direction: column; align-items: center; gap: 4px; 
