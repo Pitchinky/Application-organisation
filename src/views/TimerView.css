@@ -161,6 +161,9 @@
 @media (min-width: 768px) {
   
   .timer-page {
+    height: 100%; 
+    width: 100%;
+    display: flex;
     align-items: center; 
     /* Sur PC, il n'y a pas la barre de navigation du bas, on remet un padding normal */
     padding: 40px 20px;
