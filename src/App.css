@@ -45,7 +45,7 @@ body {
 /* Structure Globale */
 .layout-wrapper { 
   display: flex; height: 100%; width: 100%; 
-  overflow: hidden; background: var(--bg-app);
+  overflow: hidden; background: #FF2D55;
 }
 
 .layout-wrapper.mobile { flex-direction: column; }
