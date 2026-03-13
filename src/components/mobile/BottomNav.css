@@ -1,14 +1,16 @@
 /* src/components/mobile/BottomNav.css */
 .mobile-bottom-nav {
-  position: fixed;
-  left: 0; 
-  right: 0; 
-  bottom: 0;
+  /* On retire 'position: fixed' pour utiliser Flexbox */
+  width: 100%;
   
-  /* Hauteur stricte : 55px pour les icônes + l'espace de l'écran iPhone en dessous */
-  height: calc(55px + env(safe-area-inset-bottom, 20px)); 
-  padding-bottom: 0;
+  /* Hauteur visuelle stricte de 55px */
+  height: 55px; 
+  
+  /* L'espace de sécurité s'ajoute une seule fois, en dessous */
+  padding-bottom: env(safe-area-inset-bottom, 20px);
   padding-top: 0;
+  box-sizing: content-box; 
+  flex-shrink: 0; /* Empêche la barre de s'écraser */
   
   background: rgba(255, 255, 255, 0.90); 
   backdrop-filter: blur(20px);
@@ -17,9 +19,8 @@
   
   display: flex;
   justify-content: space-around;
-  align-items: center; /* Centre parfaitement les icônes au milieu des 55px */
+  align-items: center; 
   z-index: 9999;
-  box-sizing: border-box;
 }
   .nav-item { 
     background: none; border: none; 
