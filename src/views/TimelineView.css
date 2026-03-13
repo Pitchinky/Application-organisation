@@ -2,7 +2,7 @@
 
 /* --- LE CONTENEUR PRINCIPAL DE LA TIMELINE --- */
 .timeline-area {
-  padding: 20px;
+  padding: 0px;
   max-width: 100%; /* Limite la largeur sur Desktop pour que ce soit joli */
   margin: 0 auto;
   
