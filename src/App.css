@@ -56,7 +56,6 @@ body {
   -webkit-overflow-scrolling: touch; 
   /* C'est ici qu'on pousse le contenu sous l'encoche et au-dessus de la nav */
   padding-top: var(--safe-top); 
-  padding-bottom: var(--nav-total); 
   position: relative; 
 }
 
