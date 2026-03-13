@@ -7,7 +7,7 @@
   padding-top: 10px;
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
-  padding-bottom: 10px;
+  padding-bottom: 0px;
     background: rgba(255, 255, 255, 0.95); 
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
