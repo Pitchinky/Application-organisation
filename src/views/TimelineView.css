@@ -2,9 +2,9 @@
 
 /* --- LE CONTENEUR PRINCIPAL DE LA TIMELINE --- */
 .timeline-area {
-  padding: 20px;
-  max-width: 100%; /* Limite la largeur sur Desktop pour que ce soit joli */
+  width: 100%; /* Limite la largeur sur Desktop pour que ce soit joli */
   margin: 0 auto;
+  padding: 10px;
   
   /* --- LA CORRECTION EST ICI --- */
   flex: 1; /* Permet à la zone de prendre l'espace restant sous le Header */
@@ -23,12 +23,11 @@
 .timeline-area::-webkit-scrollbar {
   display: none; 
 }
-.timeline-area::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 10px;
-}
 
 .timeline-content { 
+  flex: 1;
+  height: 100%;
+  width: 100%;
   display: flex; 
   flex-direction: column; 
 }
