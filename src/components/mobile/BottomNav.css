@@ -7,7 +7,7 @@
   
   /* Hauteur stricte : 55px pour les icônes + l'espace de l'écran iPhone en dessous */
   height: calc(55px + env(safe-area-inset-bottom, 20px)); 
-  padding-bottom: env(safe-area-inset-bottom, 20px);
+  padding-bottom: 0;
   padding-top: 0;
   
   background: rgba(255, 255, 255, 0.90); 
