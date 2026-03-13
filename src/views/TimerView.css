@@ -25,27 +25,20 @@
 
 /* --- LA PAGE (TOTALEMENT VERROUILLÉE) --- */
 .timer-page {
-  /* La solution magique : sort du conteneur scrollable de App.css */
-  position: fixed; 
-  top: 0;
-  left: 0;
-  right: 0;
-  /* S'arrête exactement au-dessus de ta bottom nav bar */
-  bottom: var(--nav-total); 
-  
+  /* On enlève position: fixed, top, bottom, etc. */
+  flex: 1; /* Prend 100% de l'espace laissé par le parent */
   display: flex;
   flex-direction: column;
   background-color: var(--bg-color);
   color: var(--text-color);
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   
-  /* Bloque totalement le rebond Safari */
+  /* Bloque totalement le rebond et le scroll de la page entière */
   overflow: hidden; 
-  overscroll-behavior: none; 
-  z-index: 100; 
-  
-  padding: var(--safe-top) 20px 10px 20px;
   box-sizing: border-box;
+  
+  /* Plus besoin du safe-top, App.css s'en charge déjà ! */
+  padding: 10px 20px 20px 20px;
 }
 
 /* --- HEADER FIXE EN HAUT --- */

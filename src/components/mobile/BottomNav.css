@@ -32,14 +32,32 @@
 
 .nav-add-container {
   position: relative;
-  top: -20px;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-  .nav-add-btn { 
-    width: 56px; height: 56px; border-radius: 50%; 
-    background: black; border: none; color: white; 
-    display: flex; align-items: center; justify-content: center; 
-    box-shadow: 0 8px 20px rgba(0,0,0,0.25); 
-    cursor: pointer; transition: transform 0.1s; 
-  }
-  .nav-add-btn:active { transform: scale(0.95); }
+.nav-add-btn { 
+  position: absolute;
+  /* C'est ici la magie : on passe de -20px à -10px */
+  top: -10px; 
+  width: 56px; 
+  height: 56px; 
+  border-radius: 50%; 
+  background: black; 
+  border: none; 
+  color: white; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  /* J'ai adouci un peu l'ombre pour que ça fasse plus propre */
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2); 
+  cursor: pointer; 
+  transition: transform 0.1s; 
+}
+
+.nav-add-btn:active { 
+  transform: scale(0.95); 
+}
